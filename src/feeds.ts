@@ -8,10 +8,6 @@ const RSS_SOURCES = [
     url: "https://www.forexlive.com/feed/news",
   },
   {
-    name: "FXStreet",
-    url: "https://www.fxstreet.com/rss/news",
-  },
-  {
     name: "MarketWatch",
     url: "https://feeds.content.dowjones.io/public/rss/mw_topstories",
   },
