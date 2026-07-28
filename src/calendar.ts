@@ -107,7 +107,7 @@ Provide output in STRICT RAW JSON format ONLY:
         { role: "user", content: prompt },
       ],
       temperature: 0.1,
-      max_tokens: 500,
+      max_tokens: 200,
     })) as { response?: string } | undefined;
 
     const textOutput = response?.response;

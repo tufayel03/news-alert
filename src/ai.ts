@@ -18,41 +18,40 @@ Analyze the following news headline and content snippet for high market volatili
 
 HEADLINE: "${article.title}"
 SOURCE: ${article.source}
-CONTENT: "${article.content}"
+CONTENT: "${article.content.slice(0, 350)}"
 
 Rules:
-1. Provide all text in **Clean, Professional English**.
-2. Determine if this news is HIGH impact (Central Banks, Interest Rates, Inflation/CPI, Non-Farm Payrolls/NFP, GDP, OPEC decisions, War/Geopolitics).
-3. If it is low impact or routine gossip, set impactLevel="LOW" or "NONE".
+1. Provide all text in **Clean, Concise English**.
+2. Determine if this news is HIGH impact (Central Banks, Interest Rates, CPI, NFP, GDP, OPEC, War/Geopolitics). Otherwise impactLevel="LOW" or "NONE".
+3. Keep descriptions super short (max 10 words per field) to save output tokens.
 4. Output STRICT RAW JSON matching this exact schema:
 
 {
   "isRelevant": true,
   "impactLevel": "HIGH", // "HIGH", "MEDIUM", "LOW", or "NONE"
-  "headlineSummary": "One clean, crisp English sentence summarizing the event.",
+  "headlineSummary": "Short 1-line summary (max 10 words).",
   "keyTakeaways": [
-    "Clean English takeaway 1",
-    "Clean English takeaway 2"
+    "Key takeaway (max 10 words)"
   ],
   "affectedAssets": [
     {
       "asset": "USD", // One of: "USD", "EUR", "GBP", "XAUUSD", "OIL"
       "sentiment": "BULLISH", // "BULLISH", "BEARISH", or "NEUTRAL"
-      "reasoning": "Clean English 1-line reason for asset bias."
+      "reasoning": "Short reason (max 6 words)."
     }
   ],
-  "tradingNote": "Clean English trading takeaway for USD/EUR/GBP/Gold/Oil traders."
+  "tradingNote": "Short trading note for active traders (max 10 words)."
 }`;
 
   for (const model of AI_MODELS) {
     try {
       const response = (await env.AI.run(model, {
         messages: [
-          { role: "system", content: "You are a Forex AI analyst. Respond strictly in clean English raw JSON." },
+          { role: "system", content: "You are a concise Forex AI analyst. Respond strictly in ultra-short raw JSON." },
           { role: "user", content: prompt },
         ],
         temperature: 0.1,
-        max_tokens: 500,
+        max_tokens: 200,
       })) as { response?: string } | undefined;
 
       const textOutput = response?.response;
