@@ -58,7 +58,7 @@ export async function sendDiscordAlert(
     title: `${article.title}`,
     url: article.link,
     color: impactColors[analysis.impactLevel] || 0x3b82f6,
-    description: `**${impactEmojis[analysis.impactLevel]}** | **Source**: ${article.source}\n\n${analysis.headlineSummary}\n\n🔗 **[Read Full Story on ${article.source}](${article.link})**`,
+    description: `**${impactEmojis[analysis.impactLevel]}** | **Source**: [**${article.source}**](${article.link})\n\n${analysis.headlineSummary}`,
     fields: [
       {
         name: "📊 Asset Sentiment & Directional Bias",
