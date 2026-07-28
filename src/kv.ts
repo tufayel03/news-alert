@@ -16,18 +16,36 @@ const memorySeenCache = new Set<string>();
 
 /**
  * Check if the article hash has already been alerted or processed.
+ * Checks Memory Cache -> Cloudflare Cache API -> Cloudflare KV.
  */
 export async function isArticleAlerted(env: Env, hash: string): Promise<boolean> {
   if (memorySeenCache.has(hash)) {
     return true;
   }
 
+  // 1. Check Cloudflare Edge Cache API (Persists across worker restarts without KV)
+  try {
+    const cache = caches.default;
+    const cacheUrl = `https://news-alert.internal/seen/${hash}`;
+    const cachedResponse = await cache.match(cacheUrl);
+    if (cachedResponse) {
+      memorySeenCache.add(hash);
+      return true;
+    }
+  } catch (err) {
+    console.warn("Cache API fetch failed:", err);
+  }
+
+  // 2. Check Cloudflare KV (if bound)
   if (env.NEWS_KV) {
     try {
       const val = await env.NEWS_KV.get(`article:${hash}`);
-      return val !== null;
+      if (val !== null) {
+        memorySeenCache.add(hash);
+        return true;
+      }
     } catch (err) {
-      console.warn("KV fetch failed, using memory cache:", err);
+      console.warn("KV fetch failed:", err);
     }
   }
 
@@ -35,16 +53,31 @@ export async function isArticleAlerted(env: Env, hash: string): Promise<boolean>
 }
 
 /**
- * Mark article hash as alerted in KV with a 7-day TTL (604800 seconds).
+ * Mark article hash as alerted in Memory, Cache API (7 days), and KV.
  */
 export async function markArticleAlerted(env: Env, hash: string, title: string): Promise<void> {
   memorySeenCache.add(hash);
   if (memorySeenCache.size > 500) {
-    // Keep memory cache size bounded
     const firstKey = memorySeenCache.values().next().value;
     if (firstKey) memorySeenCache.delete(firstKey);
   }
 
+  // 1. Save to Cloudflare Edge Cache API (7-day TTL: 604800s)
+  try {
+    const cache = caches.default;
+    const cacheUrl = `https://news-alert.internal/seen/${hash}`;
+    const cacheResponse = new Response(JSON.stringify({ title, time: Date.now() }), {
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=604800", // 7 days
+      },
+    });
+    await cache.put(cacheUrl, cacheResponse);
+  } catch (err) {
+    console.warn("Cache API write failed:", err);
+  }
+
+  // 2. Save to Cloudflare KV (if bound)
   if (env.NEWS_KV) {
     try {
       await env.NEWS_KV.put(
