@@ -82,7 +82,8 @@ export async function fetchLatestNews(): Promise<NewsArticle[]> {
 
         if (!title || !link) continue;
 
-        const articleId = await hashString(`${link}-${title}`);
+        const cleanTitle = title.toLowerCase().trim();
+        const articleId = await hashString(`art:${cleanTitle}`);
 
         articles.push({
           id: articleId,

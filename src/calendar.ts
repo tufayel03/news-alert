@@ -290,7 +290,8 @@ export async function processEconomicCalendar(env: Env) {
 
     // 1. CHECK FOR 30-MINUTE PRE-ALERT (Triggers when event is 20 to 35 minutes away)
     if (diffMins >= 20 && diffMins <= 35) {
-      const preAlertHash = await hashString(`pre30m-${evt.id}-${evt.title}`);
+      const cleanTitle = evt.title.toLowerCase().trim();
+      const preAlertHash = await hashString(`pre30m:${cleanTitle}:${evt.currencyCode}`);
       const isPreAlerted = await isArticleAlerted(env, preAlertHash);
 
       if (!isPreAlerted && webhookUrl) {
@@ -303,7 +304,8 @@ export async function processEconomicCalendar(env: Env) {
 
     // 2. CHECK FOR INSTANT RELEASE VERDICT (When actual result is published)
     if (evt.actual !== null && evt.actual !== undefined) {
-      const eventHash = await hashString(`cal-${evt.id}-${evt.title}-${evt.actual}`);
+      const cleanTitle = evt.title.toLowerCase().trim();
+      const eventHash = await hashString(`cal:${cleanTitle}:${evt.currencyCode}:${evt.actual}`);
       const isAlerted = await isArticleAlerted(env, eventHash);
       if (isAlerted) continue;
 
