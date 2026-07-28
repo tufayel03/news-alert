@@ -78,7 +78,7 @@ async function processNews(env: Env) {
             : "Raw Breaking News headline sent directly so you never miss market events."
         ],
         affectedAssets: [],
-        tradingNote: `Read full story at: ${article.link}`
+        tradingNote: `🔗 [Read Full Story on ${article.source}](${article.link})`
       };
     }
 
