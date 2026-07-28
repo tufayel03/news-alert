@@ -4,16 +4,12 @@ import { hashString } from "./kv";
 
 const RSS_SOURCES = [
   {
-    name: "ForexFactory News",
-    url: "https://nfs.forexfactory.net/news/news.xml",
+    name: "ForexLive Breaking News",
+    url: "https://www.forexlive.com/feed/news",
   },
   {
     name: "Investing.com Forex",
     url: "https://www.investing.com/rss/forex.rss",
-  },
-  {
-    name: "MarketWatch",
-    url: "https://feeds.content.dowjones.io/public/rss/mw_topstories",
   },
   {
     name: "Yahoo Finance Currencies & Gold",

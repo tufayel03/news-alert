@@ -77,14 +77,6 @@ export async function sendDiscordAlert(
     timestamp: new Date().toISOString(),
   };
 
-  if (analysis.tradingNote) {
-    embed.fields.push({
-      name: "🎯 Trading Note",
-      value: `\`\`\`\n${analysis.tradingNote}\n\`\`\``,
-      inline: false,
-    });
-  }
-
   const payload = {
     username: "Forex AI Market Sentinel",
     avatar_url: "https://cdn-icons-png.flaticon.com/512/2920/2920349.png",

@@ -26,7 +26,6 @@ export interface ImpactAnalysis {
   headlineSummary: string;
   keyTakeaways: string[];
   affectedAssets: AssetSentiment[];
-  tradingNote: string;
 }
 
 export interface CalendarEvent {
@@ -50,6 +49,5 @@ export interface CalendarVerdict {
     sentiment: "BULLISH" | "BEARISH" | "NEUTRAL";
     reason: string;
   }[];
-  tradingNote: string;
 }
 

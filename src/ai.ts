@@ -39,8 +39,7 @@ Rules:
       "sentiment": "BULLISH", // "BULLISH", "BEARISH", or "NEUTRAL"
       "reasoning": "Short reason (max 6 words)."
     }
-  ],
-  "tradingNote": "Short trading note for USD/EUR/GBP/Gold traders (max 10 words)."
+  ]
 }`;
 
   for (const model of AI_MODELS) {

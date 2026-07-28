@@ -77,8 +77,7 @@ async function processNews(env: Env) {
             ? "Fix: Go to Cloudflare Dashboard -> Workers & Pages -> news-alert -> Settings -> Bindings -> Add Workers AI binding (name: AI)."
             : "Raw Breaking News headline sent directly so you never miss market events."
         ],
-        affectedAssets: [],
-        tradingNote: `Source: [${article.source}](${article.link})`
+        affectedAssets: []
       };
     }
 

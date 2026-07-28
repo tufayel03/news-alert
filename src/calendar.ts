@@ -5,12 +5,27 @@ import { getWebhookUrl } from "./index";
 
 const AI_MODEL = "@cf/meta/llama-3.1-8b-instruct";
 
+const COUNTRY_CURRENCY_MAP: Record<string, string> = {
+  "united-states": "USD",
+  "euro-zone": "EUR",
+  "germany": "EUR",
+  "france": "EUR",
+  "italy": "EUR",
+  "spain": "EUR",
+  "united-kingdom": "GBP",
+  "japan": "JPY",
+  "australia": "AUD",
+  "canada": "CAD",
+  "switzerland": "CHF",
+  "new-zealand": "NZD",
+};
+
 /**
- * Fetch high impact economic calendar events from FXStreet Calendar API
+ * Fetch high impact economic calendar events from FXEmpire Live API
  */
 export async function fetchEconomicEvents(): Promise<CalendarEvent[]> {
   try {
-    const url = "https://calendar-api.fxstreet.com/en/api/v1/eventDates?volatilities=HIGH";
+    const url = "https://www.fxempire.com/api/v1/en/economic-calendar";
     const res = await fetch(url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ForexAINewsAlert/1.0",
@@ -19,32 +34,37 @@ export async function fetchEconomicEvents(): Promise<CalendarEvent[]> {
     });
 
     if (!res.ok) {
-      console.warn(`Calendar API returned status: ${res.status}`);
+      console.warn(`Economic Calendar API returned status: ${res.status}`);
       return [];
     }
 
-    const data = (await res.json()) as any[];
-    if (!Array.isArray(data)) return [];
-
+    const data = (await res.json()) as any;
     const events: CalendarEvent[] = [];
 
-    for (const item of data) {
-      // Filter for major currencies
-      const currency = item.currencyCode || item.countryCode;
-      if (!["USD", "EUR", "GBP", "AUD", "CAD", "JPY"].includes(currency)) continue;
+    if (data?.calendar && Array.isArray(data.calendar)) {
+      for (const day of data.calendar) {
+        if (!Array.isArray(day.events)) continue;
+        for (const item of day.events) {
+          const rawCountry = (item.country || "").toLowerCase().trim();
+          const currency = COUNTRY_CURRENCY_MAP[rawCountry] || (item.currencyCode || "").toUpperCase();
+          if (!["USD", "EUR", "GBP", "AUD", "CAD", "JPY", "NZD", "CHF"].includes(currency)) continue;
 
-      events.push({
-        id: item.id || `evt-${item.name || item.title}-${item.dateUtc}`,
-        title: item.title || item.name || "High Impact Event",
-        countryCode: item.countryCode || "US",
-        currencyCode: currency,
-        dateUtc: item.dateUtc || new Date().toISOString(),
-        volatility: item.volatility || "HIGH",
-        actual: item.actual !== undefined ? item.actual : null,
-        consensus: item.consensus !== undefined ? item.consensus : null,
-        previous: item.previous !== undefined ? item.previous : null,
-        isBetterThanExpected: item.isBetterThanExpected,
-      });
+          const impactMap: Record<number, string> = { 3: "HIGH", 2: "MEDIUM", 1: "LOW" };
+          const volatility = impactMap[item.impact] || "HIGH";
+
+          events.push({
+            id: String(item.id || `evt-${item.name}-${item.date}`),
+            title: item.name || "Economic Event",
+            countryCode: rawCountry || "US",
+            currencyCode: currency,
+            dateUtc: item.date || new Date().toISOString(),
+            volatility,
+            actual: item.actual !== "" && item.actual !== undefined ? item.actual : null,
+            consensus: item.forecast !== "" && item.forecast !== undefined ? item.forecast : null,
+            previous: item.previous !== "" && item.previous !== undefined ? item.previous : null,
+          });
+        }
+      }
     }
 
     return events;
@@ -91,8 +111,7 @@ Provide output in STRICT RAW JSON format ONLY:
       "sentiment": "BEARISH",
       "reason": "1-line direct impact explanation."
     }
-  ],
-  "tradingNote": "Immediate trading verdict & recommendation for active traders."
+  ]
 }`;
 
   try {
@@ -174,14 +193,6 @@ export async function sendCalendarDiscordAlert(webhookUrl: string, verdict: Cale
     },
     timestamp: new Date().toISOString(),
   };
-
-  if (verdict.tradingNote) {
-    embed.fields.push({
-      name: "⚡ Instant Trading Verdict",
-      value: `\`\`\`\n${verdict.tradingNote}\n\`\`\``,
-      inline: false,
-    });
-  }
 
   const payload = {
     username: "ForexFactory Instant Alert Sentinel",
@@ -321,7 +332,6 @@ export async function processEconomicCalendar(env: Env) {
             { pair: "GBPUSD", sentiment: "NEUTRAL", reason: "Raw data alert" },
             { pair: "XAUUSD", sentiment: "NEUTRAL", reason: "Raw data alert" },
           ],
-          tradingNote: `Actual: ${evt.actual} | Forecast: ${evt.consensus || "N/A"} | Previous: ${evt.previous || "N/A"}`,
         };
       }
 
