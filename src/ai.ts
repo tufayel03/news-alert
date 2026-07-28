@@ -13,7 +13,7 @@ export async function analyzeNewsWithAI(env: Env, article: NewsArticle): Promise
     return null;
   }
 
-  const prompt = `You are a high-speed Forex & Commodity Macro Analyst specializing in USD, EUR, GBP, Gold (XAUUSD), and Crude Oil (WTI).
+  const prompt = `You are a high-speed Forex Macro Analyst specializing in USD, EUR, GBP, and Gold (XAUUSD).
 Analyze the following news headline and content snippet for high market volatility impact:
 
 HEADLINE: "${article.title}"
@@ -22,7 +22,7 @@ CONTENT: "${article.content.slice(0, 350)}"
 
 Rules:
 1. Provide all text in **Clean, Concise English**.
-2. Determine if this news is HIGH impact (Central Banks, Interest Rates, CPI, NFP, GDP, OPEC, War/Geopolitics). Otherwise impactLevel="LOW" or "NONE".
+2. Determine if this news is HIGH impact (Central Banks, Interest Rates, CPI, NFP, GDP, Geopolitics). Otherwise impactLevel="LOW" or "NONE".
 3. Keep descriptions super short (max 10 words per field) to save output tokens.
 4. Output STRICT RAW JSON matching this exact schema:
 
@@ -35,12 +35,12 @@ Rules:
   ],
   "affectedAssets": [
     {
-      "asset": "USD", // One of: "USD", "EUR", "GBP", "XAUUSD", "OIL"
+      "asset": "USD", // One of: "USD", "EUR", "GBP", "XAUUSD"
       "sentiment": "BULLISH", // "BULLISH", "BEARISH", or "NEUTRAL"
       "reasoning": "Short reason (max 6 words)."
     }
   ],
-  "tradingNote": "Short trading note for active traders (max 10 words)."
+  "tradingNote": "Short trading note for USD/EUR/GBP/Gold traders (max 10 words)."
 }`;
 
   for (const model of AI_MODELS) {

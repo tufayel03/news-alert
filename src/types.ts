@@ -15,7 +15,7 @@ export interface NewsArticle {
 }
 
 export interface AssetSentiment {
-  asset: "USD" | "EUR" | "GBP" | "XAUUSD" | "OIL" | "EURUSD" | "GBPUSD";
+  asset: "USD" | "EUR" | "GBP" | "XAUUSD" | "EURUSD" | "GBPUSD";
   sentiment: "BULLISH" | "BEARISH" | "NEUTRAL";
   reasoning: string;
 }
@@ -46,7 +46,7 @@ export interface CalendarVerdict {
   event: CalendarEvent;
   verdictSummary: string;
   pairSentiments: {
-    pair: "EURUSD" | "GBPUSD" | "XAUUSD" | "USOIL";
+    pair: "EURUSD" | "GBPUSD" | "XAUUSD";
     sentiment: "BULLISH" | "BEARISH" | "NEUTRAL";
     reason: string;
   }[];

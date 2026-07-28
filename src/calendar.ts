@@ -62,15 +62,15 @@ export async function analyzeCalendarVerdict(env: Env, event: CalendarEvent): Pr
   const consensusStr = event.consensus !== null ? String(event.consensus) : "N/A";
   const previousStr = event.previous !== null ? String(event.previous) : "N/A";
 
-  const prompt = `You are a high-speed institutional Forex & Commodity Analyst.
-A major High-Impact Economic Indicator has just been published on ForexFactory / FXStreet:
+  const prompt = `You are a high-speed institutional Forex Analyst.
+A major High-Impact Economic Indicator has just been published on ForexFactory:
 
 EVENT: "${event.title}" (${event.currencyCode})
 ACTUAL: ${actualStr}
 FORECAST/CONSENSUS: ${consensusStr}
 PREVIOUS: ${previousStr}
 
-Analyze the immediate impact on trading pairs: EURUSD, GBPUSD, XAUUSD (Gold), and USOIL.
+Analyze the immediate impact on trading pairs: EURUSD, GBPUSD, and XAUUSD (Gold).
 Provide output in STRICT RAW JSON format ONLY:
 
 {
@@ -89,11 +89,6 @@ Provide output in STRICT RAW JSON format ONLY:
     {
       "pair": "XAUUSD",
       "sentiment": "BEARISH",
-      "reason": "1-line direct impact explanation."
-    },
-    {
-      "pair": "USOIL",
-      "sentiment": "NEUTRAL",
       "reason": "1-line direct impact explanation."
     }
   ],
@@ -139,7 +134,6 @@ export async function sendCalendarDiscordAlert(webhookUrl: string, verdict: Cale
     EURUSD: "💶 EURUSD",
     GBPUSD: "💷 GBPUSD",
     XAUUSD: "🥇 XAUUSD (Gold)",
-    USOIL: "🛢️ USOIL (WTI)",
   };
 
   const sentimentEmojis: Record<string, string> = {
@@ -162,7 +156,7 @@ export async function sendCalendarDiscordAlert(webhookUrl: string, verdict: Cale
     title: `🚨 HIGH IMPACT DATA RELEASE: ${evt.title} [${evt.currencyCode}]`,
     url: "https://www.forexfactory.com/calendar",
     color: 0xDC2626, // Bright Red Embed
-    description: `**ForexFactory / FXStreet Instant Release**\n\n**Verdict**: ${verdict.verdictSummary}`,
+    description: `**ForexFactory Instant Release**\n\n**Verdict**: ${verdict.verdictSummary}`,
     fields: [
       {
         name: "📊 Released Economic Data",
@@ -170,7 +164,7 @@ export async function sendCalendarDiscordAlert(webhookUrl: string, verdict: Cale
         inline: true,
       },
       {
-        name: "🎯 Pair Impact (EURUSD, GBPUSD, XAUUSD, USOIL)",
+        name: "🎯 Pair Impact (EURUSD, GBPUSD, XAUUSD)",
         value: pairsFormatted.slice(0, 1024),
         inline: false,
       },
@@ -227,7 +221,7 @@ export async function sendPreAlertDiscordAlert(webhookUrl: string, evt: Calendar
     title: `⏰ 30-MIN PRE-ALERT: ${evt.title} [${flag}]`,
     url: "https://www.forexfactory.com/calendar",
     color: 0xF59E0B, // Amber Warning Embed
-    description: `**🚨 FOREXFACTORY RED FOLDER NEWS IN ~${minsRemaining} MINUTES!**\n\nHigh market volatility expected on **EURUSD**, **GBPUSD**, **XAUUSD (Gold)**, and **USOIL**.`,
+    description: `**🚨 FOREXFACTORY RED FOLDER NEWS IN ~${minsRemaining} MINUTES!**\n\nHigh market volatility expected on **EURUSD**, **GBPUSD**, and **XAUUSD (Gold)**.`,
     fields: [
       {
         name: "📅 Event Details",
@@ -326,7 +320,6 @@ export async function processEconomicCalendar(env: Env) {
             { pair: "EURUSD", sentiment: "NEUTRAL", reason: "Raw data alert" },
             { pair: "GBPUSD", sentiment: "NEUTRAL", reason: "Raw data alert" },
             { pair: "XAUUSD", sentiment: "NEUTRAL", reason: "Raw data alert" },
-            { pair: "USOIL", sentiment: "NEUTRAL", reason: "Raw data alert" },
           ],
           tradingNote: `Actual: ${evt.actual} | Forecast: ${evt.consensus || "N/A"} | Previous: ${evt.previous || "N/A"}`,
         };

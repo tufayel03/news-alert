@@ -12,16 +12,12 @@ const RSS_SOURCES = [
     url: "https://www.investing.com/rss/forex.rss",
   },
   {
-    name: "Investing.com Commodities",
-    url: "https://www.investing.com/rss/commodities.rss",
-  },
-  {
     name: "MarketWatch",
     url: "https://feeds.content.dowjones.io/public/rss/mw_topstories",
   },
   {
-    name: "Yahoo Finance Currencies & Commodities",
-    url: "https://finance.yahoo.com/rss/headline?s=GC=F,CL=F,DX-Y.NYB,EURUSD=X",
+    name: "Yahoo Finance Currencies & Gold",
+    url: "https://finance.yahoo.com/rss/headline?s=GC=F,DX-Y.NYB,EURUSD=X",
   },
 ];
 
