@@ -6,10 +6,13 @@ import { sendDiscordAlert } from "./discord";
 import { processEconomicCalendar } from "./calendar";
 import { renderDashboardHTML } from "./html";
 
+// Default fallback Webhook URL provided by user
+const DEFAULT_WEBHOOK_URL = "https://discord.com/api/webhooks/1531686607944679484/wYsOfDm2WQ9jihGLRKx-n2rbiw0Tfa5MOD8bfBN50zdVGymmLqpR4AbljVXXmtcaoc8h";
+
 // Global in-memory fallback for webhook URL if KV is not bound
 let inMemoryWebhookUrl: string | null = null;
 
-export async function getWebhookUrl(env: Env): Promise<{ url: string | null; source: string }> {
+export async function getWebhookUrl(env: Env): Promise<{ url: string; source: string }> {
   if (env.DISCORD_WEBHOOK_URL && env.DISCORD_WEBHOOK_URL.trim() !== "") {
     return { url: env.DISCORD_WEBHOOK_URL.trim(), source: "Environment Secret" };
   }
@@ -18,18 +21,18 @@ export async function getWebhookUrl(env: Env): Promise<{ url: string | null; sou
     try {
       const kvUrl = await env.NEWS_KV.get("SETTING_WEBHOOK_URL");
       if (kvUrl && kvUrl.trim() !== "") {
-        return { url: kvUrl.trim(), source: "Cloudflare KV" };
+        return { url: kvUrl.trim(), source: "Cloudflare KV Database" };
       }
     } catch (err) {
       console.warn("KV fetch error for webhook URL:", err);
     }
   }
 
-  if (inMemoryWebhookUrl) {
-    return { url: inMemoryWebhookUrl, source: "In-Memory Web GUI" };
+  if (inMemoryWebhookUrl && inMemoryWebhookUrl.trim() !== "") {
+    return { url: inMemoryWebhookUrl.trim(), source: "Web GUI (Session)" };
   }
 
-  return { url: null, source: "None" };
+  return { url: DEFAULT_WEBHOOK_URL, source: "Default Webhook" };
 }
 
 async function processNews(env: Env) {
