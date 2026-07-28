@@ -4,8 +4,12 @@ import { hashString } from "./kv";
 
 const RSS_SOURCES = [
   {
-    name: "ForexLive",
-    url: "https://www.forexlive.com/feed/news",
+    name: "Investing.com Forex",
+    url: "https://www.investing.com/rss/forex.rss",
+  },
+  {
+    name: "Investing.com Commodities",
+    url: "https://www.investing.com/rss/commodities.rss",
   },
   {
     name: "MarketWatch",
