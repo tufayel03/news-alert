@@ -77,10 +77,23 @@ export async function fetchLatestNews(): Promise<NewsArticle[]> {
       for (const item of itemList.slice(0, 5)) {
         const title = cleanText(item.title || "");
         const link = item.link?.["@_href"] || item.link || "";
-        const pubDate = item.pubDate || item.published || item.updated || new Date().toISOString();
+        const pubDateStr = item.pubDate || item.published || item.updated || "";
         const content = cleanText(item.description || item.content || item["content:encoded"] || title);
 
         if (!title || !link) continue;
+
+        // Freshness check: Discard articles older than 15 minutes (900 seconds)
+        if (pubDateStr) {
+          const articleTime = new Date(pubDateStr).getTime();
+          if (!isNaN(articleTime)) {
+            const ageMs = Date.now() - articleTime;
+            // Only process breaking articles published in the last 15 minutes (900,000ms)
+            if (ageMs > 15 * 60 * 1000) {
+              console.log(`[SKIP OLD ARTICLE] "${title}" is ${Math.round(ageMs / 60000)} mins old`);
+              continue;
+            }
+          }
+        }
 
         const cleanTitle = title.toLowerCase().trim();
         const articleId = await hashString(`art:${cleanTitle}`);
@@ -89,7 +102,7 @@ export async function fetchLatestNews(): Promise<NewsArticle[]> {
           id: articleId,
           title,
           link: typeof link === "string" ? link : String(link),
-          pubDate,
+          pubDate: pubDateStr || new Date().toISOString(),
           source: source.name,
           content: content.slice(0, 800), // Keep content snippet manageable for AI prompt
         });

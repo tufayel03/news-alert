@@ -302,8 +302,14 @@ export async function processEconomicCalendar(env: Env) {
       }
     }
 
-    // 2. CHECK FOR INSTANT RELEASE VERDICT (When actual result is published)
+    // 2. CHECK FOR INSTANT RELEASE VERDICT (When actual result is published within last 30 minutes)
     if (evt.actual !== null && evt.actual !== undefined) {
+      const ageMs = nowMs - eventTimeMs;
+      // Discard calendar releases older than 30 minutes (1,800,000ms) or in the future
+      if (ageMs > 30 * 60 * 1000 || ageMs < 0) {
+        continue;
+      }
+
       const cleanTitle = evt.title.toLowerCase().trim();
       const eventHash = await hashString(`cal:${cleanTitle}:${evt.currencyCode}:${evt.actual}`);
       const isAlerted = await isArticleAlerted(env, eventHash);
