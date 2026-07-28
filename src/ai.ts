@@ -13,7 +13,7 @@ export async function analyzeNewsWithAI(env: Env, article: NewsArticle): Promise
     return null;
   }
 
-  const prompt = `You are a high-speed Forex & Commodity Macro Analyst specializing in USD, EUR, Gold (XAUUSD), and Crude Oil (WTI).
+  const prompt = `You are a high-speed Forex & Commodity Macro Analyst specializing in USD, EUR, GBP, Gold (XAUUSD), and Crude Oil (WTI).
 Analyze the following news headline and content snippet for high market volatility impact:
 
 HEADLINE: "${article.title}"
@@ -36,12 +36,12 @@ Rules:
   ],
   "affectedAssets": [
     {
-      "asset": "USD", // One of: "USD", "EUR", "XAUUSD", "OIL"
+      "asset": "USD", // One of: "USD", "EUR", "GBP", "XAUUSD", "OIL"
       "sentiment": "BULLISH", // "BULLISH", "BEARISH", or "NEUTRAL"
       "reasoning": "Clean English 1-line reason for asset bias."
     }
   ],
-  "tradingNote": "Clean English trading takeaway for USD/Gold/Oil traders."
+  "tradingNote": "Clean English trading takeaway for USD/EUR/GBP/Gold/Oil traders."
 }`;
 
   for (const model of AI_MODELS) {

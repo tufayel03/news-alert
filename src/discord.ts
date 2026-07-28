@@ -27,6 +27,7 @@ export async function sendDiscordAlert(
   const assetEmojis: Record<string, string> = {
     USD: "💵 USD",
     EUR: "💶 EUR",
+    GBP: "💷 GBP",
     XAUUSD: "🥇 GOLD (XAUUSD)",
     OIL: "🛢️ OIL (WTI)",
   };
