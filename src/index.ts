@@ -4,10 +4,40 @@ import { isArticleAlerted, markArticleAlerted } from "./kv";
 import { analyzeNewsWithAI } from "./ai";
 import { sendDiscordAlert } from "./discord";
 import { processEconomicCalendar } from "./calendar";
+import { renderDashboardHTML } from "./html";
+
+// Global in-memory fallback for webhook URL if KV is not bound
+let inMemoryWebhookUrl: string | null = null;
+
+export async function getWebhookUrl(env: Env): Promise<{ url: string | null; source: string }> {
+  if (env.DISCORD_WEBHOOK_URL && env.DISCORD_WEBHOOK_URL.trim() !== "") {
+    return { url: env.DISCORD_WEBHOOK_URL.trim(), source: "Environment Secret" };
+  }
+
+  if (env.NEWS_KV) {
+    try {
+      const kvUrl = await env.NEWS_KV.get("SETTING_WEBHOOK_URL");
+      if (kvUrl && kvUrl.trim() !== "") {
+        return { url: kvUrl.trim(), source: "Cloudflare KV" };
+      }
+    } catch (err) {
+      console.warn("KV fetch error for webhook URL:", err);
+    }
+  }
+
+  if (inMemoryWebhookUrl) {
+    return { url: inMemoryWebhookUrl, source: "In-Memory Web GUI" };
+  }
+
+  return { url: null, source: "None" };
+}
 
 async function processNews(env: Env) {
   const startTime = Date.now();
   console.log("Starting Forex AI News Alert processing...");
+
+  const webhookInfo = await getWebhookUrl(env);
+  const webhookUrl = webhookInfo.url;
 
   const articles = await fetchLatestNews();
   console.log(`Fetched ${articles.length} total news items from RSS feeds.`);
@@ -16,10 +46,7 @@ async function processNews(env: Env) {
   let skippedCount = 0;
   let nonRelevantCount = 0;
 
-  const minImpact = (env.MIN_IMPACT_LEVEL || "MEDIUM").toUpperCase();
-
   for (const article of articles) {
-    // 1. Check KV deduplication
     const isAlreadyAlerted = await isArticleAlerted(env, article.id);
     if (isAlreadyAlerted) {
       skippedCount++;
@@ -28,11 +55,9 @@ async function processNews(env: Env) {
 
     console.log(`Analyzing new article: "${article.title}" (${article.source})`);
 
-    // 2. Run AI Analysis
     let analysis = await analyzeNewsWithAI(env, article);
     let isRawFallback = false;
 
-    // Fallback: If AI fails (e.g. credit/quota limit exhausted or service error), send RAW alert!
     if (!analysis) {
       console.warn(`[RAW FALLBACK] AI unavailable for "${article.title}". Sending raw breaking news alert.`);
       isRawFallback = true;
@@ -55,27 +80,22 @@ async function processNews(env: Env) {
       continue;
     }
 
-    // Default filter: High impact news unless MIN_IMPACT_LEVEL is explicitly changed
     const minImpact = (env.MIN_IMPACT_LEVEL || "HIGH").toUpperCase();
     const shouldAlert = isRawFallback || minImpact === "ALL" || analysis.impactLevel === minImpact || (minImpact === "MEDIUM" && analysis.impactLevel === "HIGH");
 
-    if (shouldAlert && env.DISCORD_WEBHOOK_URL) {
+    if (shouldAlert && webhookUrl) {
       console.log(`[ALERT] ${isRawFallback ? "RAW FALLBACK" : "AI"} Impact ${analysis.impactLevel}: Sending Discord alert for "${article.title}"`);
-      const sent = await sendDiscordAlert(env.DISCORD_WEBHOOK_URL, article, analysis);
-      if (sent) {
-        alertedCount++;
-      }
+      const sent = await sendDiscordAlert(webhookUrl, article, analysis);
+      if (sent) alertedCount++;
     } else {
       console.log(`Skipped alert for "${article.title}" (Impact: ${analysis.impactLevel}, Filter: ${minImpact})`);
     }
 
-    // 3. Mark article as processed in KV state
     await markArticleAlerted(env, article.id, article.title);
   }
 
   const durationMs = Date.now() - startTime;
-  
-  // Also process High-Impact Economic Calendar data releases (CPI, Interest Rates, NFP, GDP)
+
   console.log("Checking High-Impact Economic Calendar releases...");
   const calendarAlertsCount = await processEconomicCalendar(env);
 
@@ -87,6 +107,8 @@ async function processNews(env: Env) {
     calendarAlerted: calendarAlertsCount,
     skippedDuplicates: skippedCount,
     nonRelevant: nonRelevantCount,
+    webhookConfigured: Boolean(webhookUrl),
+    webhookSource: webhookInfo.source,
   };
 
   console.log("Processing finished:", JSON.stringify(summary));
@@ -94,39 +116,70 @@ async function processNews(env: Env) {
 }
 
 export default {
-  /**
-   * Cron Trigger handler (runs automatically on scheduled intervals)
-   */
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(processNews(env));
   },
 
-  /**
-   * HTTP Fetch handler (for testing, manual triggering, or monitoring status)
-   */
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
+    // Save Webhook Settings via POST /api/settings
+    if (url.pathname === "/api/settings" && request.method === "POST") {
+      try {
+        const body = (await request.json()) as { webhookUrl?: string };
+        const newUrl = body.webhookUrl?.trim();
+        if (!newUrl || !newUrl.startsWith("http")) {
+          return new Response(JSON.stringify({ error: "Invalid Webhook URL" }), { status: 400 });
+        }
+
+        inMemoryWebhookUrl = newUrl;
+        if (env.NEWS_KV) {
+          await env.NEWS_KV.put("SETTING_WEBHOOK_URL", newUrl);
+        }
+
+        return new Response(JSON.stringify({ success: true, message: "Webhook saved successfully" }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+      }
+    }
+
+    // Status endpoint
     if (url.pathname === "/status") {
+      const webhookInfo = await getWebhookUrl(env);
       return new Response(
         JSON.stringify({
           status: "online",
-          service: "Forex AI News Alert Worker",
+          service: "Forex AI News & Calendar Sentinel",
           timestamp: new Date().toISOString(),
-          minImpact: env.MIN_IMPACT_LEVEL || "MEDIUM",
-          hasWebhook: Boolean(env.DISCORD_WEBHOOK_URL),
+          minImpact: env.MIN_IMPACT_LEVEL || "HIGH",
+          hasWebhook: Boolean(webhookInfo.url),
+          webhookSource: webhookInfo.source,
         }),
         { headers: { "Content-Type": "application/json" } }
       );
     }
 
-    if (url.pathname === "/trigger" || url.pathname === "/test" || url.pathname === "/") {
+    // Trigger news run endpoint
+    if (url.pathname === "/trigger" || url.pathname === "/test") {
       const summary = await processNews(env);
-      return new Response(JSON.stringify({ message: "News processing cycle completed", summary }, null, 2), {
+      return new Response(JSON.stringify({ message: "News & Calendar cycle completed", summary }, null, 2), {
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    return new Response("Not Found", { status: 404 });
+    // Render Web Dashboard GUI on root "/"
+    const webhookInfo = await getWebhookUrl(env);
+    const html = renderDashboardHTML({
+      service: "Forex AI News & Calendar Sentinel",
+      hasWebhook: Boolean(webhookInfo.url),
+      webhookSource: webhookInfo.source,
+      minImpact: env.MIN_IMPACT_LEVEL || "HIGH",
+    });
+
+    return new Response(html, {
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
   },
 };

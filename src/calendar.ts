@@ -1,6 +1,7 @@
 import { CalendarEvent, CalendarVerdict, Env } from "./types";
 import { hashString, isArticleAlerted, markArticleAlerted } from "./kv";
 import { sendDiscordAlert } from "./discord";
+import { getWebhookUrl } from "./index";
 
 const AI_MODEL = "@cf/meta/llama-3.1-8b-instruct";
 
@@ -277,6 +278,9 @@ export async function processEconomicCalendar(env: Env) {
   let alertedCount = 0;
   const nowMs = Date.now();
 
+  const webhookInfo = await getWebhookUrl(env);
+  const webhookUrl = webhookInfo.url;
+
   for (const evt of events) {
     // Only check Red Folder currencies: USD, EUR, GBP
     if (!["USD", "EUR", "GBP"].includes(evt.currencyCode)) continue;
@@ -289,9 +293,9 @@ export async function processEconomicCalendar(env: Env) {
       const preAlertHash = await hashString(`pre30m-${evt.id}-${evt.title}`);
       const isPreAlerted = await isArticleAlerted(env, preAlertHash);
 
-      if (!isPreAlerted && env.DISCORD_WEBHOOK_URL) {
+      if (!isPreAlerted && webhookUrl) {
         console.log(`[30-MIN PRE-ALERT] Upcoming Red Folder event: ${evt.title} (${evt.currencyCode}) in ${Math.round(diffMins)} mins`);
-        const sent = await sendPreAlertDiscordAlert(env.DISCORD_WEBHOOK_URL, evt, Math.round(diffMins));
+        const sent = await sendPreAlertDiscordAlert(webhookUrl, evt, Math.round(diffMins));
         if (sent) alertedCount++;
         await markArticleAlerted(env, preAlertHash, `PreAlert: ${evt.title}`);
       }
@@ -320,8 +324,8 @@ export async function processEconomicCalendar(env: Env) {
         };
       }
 
-      if (env.DISCORD_WEBHOOK_URL) {
-        const sent = await sendCalendarDiscordAlert(env.DISCORD_WEBHOOK_URL, verdict);
+      if (webhookUrl) {
+        const sent = await sendCalendarDiscordAlert(webhookUrl, verdict);
         if (sent) alertedCount++;
       }
 
