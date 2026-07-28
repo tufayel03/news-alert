@@ -11,12 +11,6 @@
       "*/3 * * * *"
     ]
   },
-  "kv_namespaces": [
-    {
-      "binding": "NEWS_KV",
-      "id": "forex_news_kv_placeholder"
-    }
-  ],
   "ai": {
     "binding": "AI"
   },
