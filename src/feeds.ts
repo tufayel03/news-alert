@@ -4,6 +4,10 @@ import { hashString } from "./kv";
 
 const RSS_SOURCES = [
   {
+    name: "ForexFactory News",
+    url: "https://nfs.forexfactory.net/news/news.xml",
+  },
+  {
     name: "Investing.com Forex",
     url: "https://www.investing.com/rss/forex.rss",
   },
@@ -82,13 +86,13 @@ export async function fetchLatestNews(): Promise<NewsArticle[]> {
 
         if (!title || !link) continue;
 
-        // Freshness check: Discard articles older than 15 minutes (900 seconds)
+        // Freshness check: Discard articles older than 45 minutes (2700 seconds)
         if (pubDateStr) {
           const articleTime = new Date(pubDateStr).getTime();
           if (!isNaN(articleTime)) {
             const ageMs = Date.now() - articleTime;
-            // Only process breaking articles published in the last 15 minutes (900,000ms)
-            if (ageMs > 15 * 60 * 1000) {
+            // Only process breaking articles published in the last 45 minutes (2,700,000ms)
+            if (ageMs > 45 * 60 * 1000) {
               console.log(`[SKIP OLD ARTICLE] "${title}" is ${Math.round(ageMs / 60000)} mins old`);
               continue;
             }
