@@ -1,8 +1,18 @@
 import { Env, ImpactAnalysis, NewsArticle } from "./types";
 
-const AI_MODEL = "@cf/meta/llama-3.1-8b-instruct";
+// List of free Workers AI models to try sequentially
+const AI_MODELS = [
+  "@cf/meta/llama-3.1-8b-instruct",
+  "@cf/meta/llama-3-8b-instruct",
+  "@cf/mistral/mistral-7b-instruct-v0.1",
+];
 
 export async function analyzeNewsWithAI(env: Env, article: NewsArticle): Promise<ImpactAnalysis | null> {
+  if (!env.AI) {
+    console.warn("Workers AI binding 'AI' is not bound in Cloudflare. Please add Workers AI binding in Cloudflare Dashboard -> Workers & Pages -> news-alert -> Settings -> Bindings -> Workers AI.");
+    return null;
+  }
+
   const prompt = `You are a high-speed Forex & Commodity Macro Analyst specializing in USD, EUR, Gold (XAUUSD), and Crude Oil (WTI).
 Analyze the following news headline and content snippet for high market volatility impact:
 
@@ -34,30 +44,30 @@ Rules:
   "tradingNote": "Clean English trading takeaway for USD/Gold/Oil traders."
 }`;
 
-  try {
-    const response = (await env.AI.run(AI_MODEL, {
-      messages: [
-        { role: "system", content: "You are a Forex AI analyst. Respond strictly in clean English raw JSON." },
-        { role: "user", content: prompt },
-      ],
-      temperature: 0.1,
-      max_tokens: 500,
-    })) as { response?: string } | undefined;
+  for (const model of AI_MODELS) {
+    try {
+      const response = (await env.AI.run(model, {
+        messages: [
+          { role: "system", content: "You are a Forex AI analyst. Respond strictly in clean English raw JSON." },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.1,
+        max_tokens: 500,
+      })) as { response?: string } | undefined;
 
-    const textOutput = response?.response;
-    if (!textOutput) return null;
+      const textOutput = response?.response;
+      if (!textOutput) continue;
 
-    const jsonMatch = textOutput.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.warn("Could not parse JSON from Workers AI output:", textOutput);
-      return null;
+      const jsonMatch = textOutput.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) continue;
+
+      const parsed = JSON.parse(jsonMatch[0]) as ImpactAnalysis;
+      return parsed;
+    } catch (err) {
+      console.warn(`Model ${model} failed, trying fallback:`, err);
     }
-
-    const parsed = JSON.parse(jsonMatch[0]) as ImpactAnalysis;
-    return parsed;
-  } catch (err) {
-    console.error(`Cloudflare Workers AI call failed (quota/credit/network error) for "${article.title}":`, err);
-    return null;
   }
-}
 
+  console.error(`All Workers AI models failed for article "${article.title}"`);
+  return null;
+}

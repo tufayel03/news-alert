@@ -59,6 +59,7 @@ async function processNews(env: Env) {
     let isRawFallback = false;
 
     if (!analysis) {
+      const isMissingBinding = !env.AI;
       console.warn(`[RAW FALLBACK] AI unavailable for "${article.title}". Sending raw breaking news alert.`);
       isRawFallback = true;
       analysis = {
@@ -66,8 +67,12 @@ async function processNews(env: Env) {
         impactLevel: "HIGH",
         headlineSummary: article.content ? article.content.slice(0, 350) + "..." : article.title,
         keyTakeaways: [
-          "⚠️ Cloudflare AI Free Credits Exhausted or AI Unavailable.",
-          "Raw Breaking News headline sent directly so you never miss market events."
+          isMissingBinding
+            ? "⚠️ Workers AI Binding Missing on Cloudflare Dashboard."
+            : "⚠️ Cloudflare AI Free Credits Exhausted or Service Unavailable.",
+          isMissingBinding
+            ? "Fix: Go to Cloudflare Dashboard -> Workers & Pages -> news-alert -> Settings -> Bindings -> Add Workers AI binding (name: AI)."
+            : "Raw Breaking News headline sent directly so you never miss market events."
         ],
         affectedAssets: [],
         tradingNote: `Read full story at: ${article.link}`
