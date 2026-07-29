@@ -22,30 +22,35 @@ const COUNTRY_CURRENCY_MAP: Record<string, string> = {
 };
 
 /**
- * Fetch strictly High Impact (Red Folder) economic calendar events
+ * Fetch strictly High Impact (Red Folder) economic calendar events (All pages)
  */
 export async function fetchEconomicEvents(): Promise<CalendarEvent[]> {
   try {
-    const url = "https://www.fxempire.com/api/v1/en/economic-calendar";
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ForexAINewsAlert/1.0",
-        "Accept": "application/json",
-      },
-    });
-
-    if (!res.ok) {
-      console.warn(`Economic Calendar API returned status: ${res.status}`);
-      return [];
-    }
-
-    const data = (await res.json()) as any;
     const events: CalendarEvent[] = [];
 
-    if (data?.calendar && Array.isArray(data.calendar)) {
+    // Fetch pages 1 to 3 to ensure late-day high impact events (like Fed Rate Decision on page 2) are never truncated
+    for (let page = 1; page <= 3; page++) {
+      const url = `https://www.fxempire.com/api/v1/en/economic-calendar?page=${page}`;
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ForexAINewsAlert/1.0",
+          "Accept": "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        console.warn(`Economic Calendar API page ${page} returned status: ${res.status}`);
+        break;
+      }
+
+      const data = (await res.json()) as any;
+      if (!data?.calendar || !Array.isArray(data.calendar)) break;
+
+      let pageEventCount = 0;
       for (const day of data.calendar) {
         if (!Array.isArray(day.events)) continue;
         for (const item of day.events) {
+          pageEventCount++;
           // RED FOLDER / HIGH IMPACT ONLY (item.impact === 3 or "3" or "HIGH")
           if (item.impact !== 3 && item.impact !== "3" && item.impact !== "HIGH") continue;
 
@@ -66,6 +71,8 @@ export async function fetchEconomicEvents(): Promise<CalendarEvent[]> {
           });
         }
       }
+
+      if (pageEventCount === 0) break;
     }
 
     return events;
@@ -294,8 +301,8 @@ export async function processEconomicCalendar(env: Env) {
     const eventTimeMs = new Date(evt.dateUtc).getTime();
     const diffMins = (eventTimeMs - nowMs) / (1000 * 60);
 
-    // 1. CHECK FOR 30-MINUTE PRE-ALERT (Triggers when event is 20 to 35 minutes away)
-    if (diffMins >= 20 && diffMins <= 35) {
+    // 1. CHECK FOR 30-MINUTE PRE-ALERT (Triggers when event is 10 to 45 minutes away)
+    if (diffMins >= 10 && diffMins <= 45) {
       const cleanTitle = evt.title.toLowerCase().trim();
       const preAlertHash = await hashString(`pre30m:${cleanTitle}:${evt.currencyCode}`);
       const isPreAlerted = await isArticleAlerted(env, preAlertHash);
