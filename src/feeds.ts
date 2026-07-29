@@ -8,8 +8,8 @@ const RSS_SOURCES = [
     url: "https://www.investing.com/rss/forex.rss",
   },
   {
-    name: "Yahoo Finance Currencies & Gold",
-    url: "https://finance.yahoo.com/rss/headline?s=GC=F,DX-Y.NYB,EURUSD=X",
+    name: "Yahoo Finance Commodities & Macro",
+    url: "https://finance.yahoo.com/rss/headline?s=GC=F,CL=F,DX-Y.NYB,EURUSD=X",
   },
 ];
 
