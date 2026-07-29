@@ -7,15 +7,18 @@ const AI_MODELS = [
   "@cf/mistral/mistral-7b-instruct-v0.1",
 ];
 
-// Title patterns to immediately reject (opinion pieces, ETF advice, historical analyses, clickbait)
+// Title patterns to immediately reject (opinion pieces, stock market commentary, ETF advice, clickbait questions)
 const REJECT_PATTERNS = [
   /is (now|it) a (good|bad) time/i,
-  /here's what/i,
+  /here's (what|why|how)/i,
   /should you (buy|sell|invest)/i,
   /top \d+/i,
   /what history (says|shows)/i,
   /reasons to (buy|sell)/i,
-  /investment strategy|etf guide/i,
+  /investment strategy|etf guide|stock market/i,
+  /s&p|nasdaq|dow jones|big tech|wall street|tech stocks|stock rotation|melt-up/i,
+  /market experts|analysts (say|think|believe|suggest|discuss)/i,
+  /\?/i, // Discard speculative headlines containing question marks
 ];
 
 export async function analyzeNewsWithAI(env: Env, article: NewsArticle): Promise<ImpactAnalysis | null> {
@@ -24,10 +27,10 @@ export async function analyzeNewsWithAI(env: Env, article: NewsArticle): Promise
     return null;
   }
 
-  // Pre-filter: Discard opinion / investment advice articles immediately
+  // Pre-filter: Discard stock commentary, opinion, and investment advice articles immediately
   for (const pattern of REJECT_PATTERNS) {
     if (pattern.test(article.title)) {
-      console.log(`[REJECT OPINION/ANALYSIS] Skipping: "${article.title}"`);
+      console.log(`[REJECT OPINION/EQUITY COMMENTARY] Skipping: "${article.title}"`);
       return {
         isRelevant: false,
         impactLevel: "NONE",
@@ -46,13 +49,15 @@ SOURCE: ${article.source}
 CONTENT: "${article.content.slice(0, 350)}"
 
 CRITICAL REJECTION RULES (isRelevant = false):
-1. REJECT (isRelevant=false, impactLevel="NONE") if this is an opinion piece, market commentary, historical analysis, or ETF/investment advice (e.g. "Is now a good time to buy", "What history says", "Should you invest").
-2. REJECT (isRelevant=false, impactLevel="NONE") if this is just discussing or recapping scheduled economic data (CPI, inflation, employment numbers) that traders already track on economic calendars.
+1. REJECT (isRelevant=false, impactLevel="NONE") if this is stock market commentary, S&P 500, Nasdaq, Big Tech, earnings, or equity rotation news.
+2. REJECT (isRelevant=false, impactLevel="NONE") if this is an opinion piece, historical analysis, or ETF/stock investment advice (e.g. "Why money is leaving", "Is now a good time", "S&P melt-up").
+3. REJECT (isRelevant=false, impactLevel="NONE") if this is just discussing or recapping scheduled economic data (CPI, inflation, employment numbers) that traders already track on economic calendars.
 
 CRITICAL ACCEPTANCE RULES (isRelevant = true, impactLevel = "HIGH"):
 ACCEPT ONLY IF this is REAL BREAKING GEOPOLITICAL OR MAJOR FUNDAMENTAL NEWS:
 - Geopolitical events: Wars, military strikes/attacks, Strait of Hormuz, Middle East escalation, sanctions, tariffs, trade war.
 - Major breaking central bank policy shifts or emergency announcements.
+- Direct macro shocks impacting USD, EUR, GBP, or Gold.
 
 Output STRICT RAW JSON:
 
