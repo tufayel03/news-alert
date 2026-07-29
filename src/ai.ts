@@ -24,21 +24,21 @@ Rules:
 1. Determine if this news is HIGH impact (Central Banks, Fed Interest Rates, CPI, NFP, GDP, Geopolitics). Otherwise impactLevel="LOW" or "NONE".
 2. Identify ONLY directly impacted currencies/assets ("USD", "EUR", "GBP", "GOLD"). Do NOT include currency pairs (no EURUSD, no GBPUSD).
 3. Do NOT include unaffected or neutral currencies in "affectedAssets". Only list currencies that are clearly BULLISH or BEARISH.
-4. Keep descriptions ultra-short (max 8 words) for instant reading.
+4. Provide a clear, concise headline summary around 2 lines (approx 20-30 words).
 5. Output STRICT RAW JSON:
 
 {
   "isRelevant": true,
   "impactLevel": "HIGH", // "HIGH", "MEDIUM", "LOW", or "NONE"
-  "headlineSummary": "Short 1-line key point (max 8 words).",
+  "headlineSummary": "Concise 2-line summary explaining the news context.",
   "keyTakeaways": [
-    "Key market takeaway (max 8 words)"
+    "Main market takeaway (1-2 sentences)."
   ],
   "affectedAssets": [
     {
       "asset": "USD", // Single currency/asset only: "USD", "EUR", "GBP", or "GOLD"
       "sentiment": "BULLISH", // "BULLISH" or "BEARISH"
-      "reasoning": "Short reason (max 6 words)."
+      "reasoning": "Short reason (max 10 words)."
     }
   ]
 }`;
@@ -47,11 +47,11 @@ Rules:
     try {
       const response = (await env.AI.run(model, {
         messages: [
-          { role: "system", content: "You are a concise Forex AI analyst. Respond strictly in ultra-short raw JSON." },
+          { role: "system", content: "You are a concise Forex AI analyst. Respond strictly in clean raw JSON." },
           { role: "user", content: prompt },
         ],
         temperature: 0.1,
-        max_tokens: 200,
+        max_tokens: 350,
       })) as { response?: string } | undefined;
 
       const textOutput = response?.response;

@@ -94,11 +94,11 @@ PREVIOUS: ${previousStr}
 Rules:
 1. Identify ONLY directly impacted currencies/assets ("USD", "EUR", "GBP", "GOLD"). Do NOT use currency pairs (no EURUSD, no GBPUSD).
 2. Do NOT include unaffected or neutral currencies. Only list currencies that are clearly BULLISH or BEARISH.
-3. Keep descriptions ultra-short (max 8 words).
+3. Provide a clear, concise verdict summary around 2 lines (approx 20-30 words).
 4. Output STRICT RAW JSON format ONLY:
 
 {
-  "verdictSummary": "One-line instant verdict (max 8 words).",
+  "verdictSummary": "Concise 2-line summary on the release impact.",
   "currencyImpacts": [
     {
       "currency": "${event.currencyCode}",
@@ -115,7 +115,7 @@ Rules:
         { role: "user", content: prompt },
       ],
       temperature: 0.1,
-      max_tokens: 200,
+      max_tokens: 350,
     })) as { response?: string } | undefined;
 
     const textOutput = response?.response;
