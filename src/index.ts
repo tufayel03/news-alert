@@ -59,41 +59,25 @@ async function processNews(env: Env) {
     console.log(`Analyzing new article: "${article.title}" (${article.source})`);
 
     let analysis = await analyzeNewsWithAI(env, article);
-    let isRawFallback = false;
-
-    if (!analysis) {
-      const isMissingBinding = !env.AI;
-      console.warn(`[RAW FALLBACK] AI unavailable for "${article.title}". Sending raw breaking news alert.`);
-      isRawFallback = true;
-      analysis = {
-        isRelevant: true,
-        impactLevel: "HIGH",
-        headlineSummary: article.content ? article.content.slice(0, 350) + "..." : article.title,
-        keyTakeaways: [
-          isMissingBinding
-            ? "⚠️ Workers AI Binding Missing on Cloudflare Dashboard."
-            : "⚠️ Cloudflare AI Free Credits Exhausted or Service Unavailable.",
-          isMissingBinding
-            ? "Fix: Go to Cloudflare Dashboard -> Workers & Pages -> news-alert -> Settings -> Bindings -> Add Workers AI binding (name: AI)."
-            : "Raw Breaking News headline sent directly so you never miss market events."
-        ],
-        affectedAssets: []
-      };
+    if (!analysis || !analysis.isRelevant || analysis.impactLevel === "NONE") {
+      nonRelevantCount++;
+      await markArticleAlerted(env, article.id, article.title);
+      continue;
     }
 
     const hasDirectionalImpact = analysis.affectedAssets && analysis.affectedAssets.some((a) => a.sentiment === "BULLISH" || a.sentiment === "BEARISH");
 
-    if (!analysis.isRelevant || analysis.impactLevel === "NONE" || (!isRawFallback && !hasDirectionalImpact)) {
+    if (!hasDirectionalImpact) {
       nonRelevantCount++;
       await markArticleAlerted(env, article.id, article.title);
       continue;
     }
 
     const minImpact = (env.MIN_IMPACT_LEVEL || "HIGH").toUpperCase();
-    const shouldAlert = isRawFallback || minImpact === "ALL" || analysis.impactLevel === minImpact || (minImpact === "MEDIUM" && analysis.impactLevel === "HIGH");
+    const shouldAlert = minImpact === "ALL" || analysis.impactLevel === minImpact || (minImpact === "MEDIUM" && analysis.impactLevel === "HIGH");
 
     if (shouldAlert && webhookUrl) {
-      console.log(`[ALERT] ${isRawFallback ? "RAW FALLBACK" : "AI"} Impact ${analysis.impactLevel}: Sending Discord alert for "${article.title}"`);
+      console.log(`[ALERT] AI Impact ${analysis.impactLevel}: Sending Discord alert for "${article.title}"`);
       const sent = await sendDiscordAlert(webhookUrl, article, analysis);
       if (sent) alertedCount++;
     } else {
