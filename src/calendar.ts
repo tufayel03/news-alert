@@ -172,6 +172,11 @@ export async function sendCalendarDiscordAlert(webhookUrl: string, verdict: Cale
         .join("\n")
     : null;
 
+  let description = `**ForexFactory Instant Release**\n\n**Verdict**: ${verdict.verdictSummary}`;
+  if (impactsFormatted) {
+    description += `\n\n${impactsFormatted}`;
+  }
+
   const fields: { name: string; value: string; inline?: boolean }[] = [
     {
       name: "📊 Released Economic Data",
@@ -180,19 +185,11 @@ export async function sendCalendarDiscordAlert(webhookUrl: string, verdict: Cale
     },
   ];
 
-  if (impactsFormatted) {
-    fields.push({
-      name: "🎯 Currency & Commodity Impact",
-      value: impactsFormatted.slice(0, 1024),
-      inline: false,
-    });
-  }
-
   const embed = {
     title: `🚨 HIGH IMPACT DATA RELEASE: ${evt.title} [${evt.currencyCode}]`,
     url: "https://www.forexfactory.com/calendar",
     color: 0xDC2626, // Bright Red Embed
-    description: `**ForexFactory Instant Release**\n\n**Verdict**: ${verdict.verdictSummary}`,
+    description,
     fields,
     footer: {
       text: "ForexFactory Instant Verdict Sentinel • Cloudflare Workers AI",

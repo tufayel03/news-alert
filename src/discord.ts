@@ -60,27 +60,24 @@ export async function sendDiscordAlert(
     ? analysis.keyTakeaways.map((t) => `• ${t}`).join("\n")
     : analysis.headlineSummary;
 
-  const fields: { name: string; value: string; inline?: boolean }[] = [];
-
+  let description = `**${impactEmojis[analysis.impactLevel]}** | **Source**: [**${article.source}**](${article.link})\n\n${analysis.headlineSummary}`;
   if (assetsFormatted) {
-    fields.push({
-      name: "🎯 Impacted Currencies & Assets",
-      value: assetsFormatted.slice(0, 1024),
-      inline: false,
-    });
+    description += `\n\n${assetsFormatted}`;
   }
 
-  fields.push({
-    name: "💡 Key Market Takeaway",
-    value: takeawaysFormatted.slice(0, 1024),
-    inline: false,
-  });
+  const fields: { name: string; value: string; inline?: boolean }[] = [
+    {
+      name: "💡 Key Market Takeaway",
+      value: takeawaysFormatted.slice(0, 1024),
+      inline: false,
+    },
+  ];
 
   const embed = {
     title: `${article.title}`,
     url: article.link,
     color: impactColors[analysis.impactLevel] || 0x3b82f6,
-    description: `**${impactEmojis[analysis.impactLevel]}** | **Source**: [**${article.source}**](${article.link})\n\n${analysis.headlineSummary}`,
+    description,
     fields,
     footer: {
       text: "Forex & Commodity AI Alert System • Cloudflare Workers AI",
