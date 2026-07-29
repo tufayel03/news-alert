@@ -17,6 +17,7 @@ export interface NewsArticle {
 export interface AssetSentiment {
   asset: "USD" | "EUR" | "GBP" | "GOLD" | "XAUUSD" | string;
   sentiment: "BULLISH" | "BEARISH" | "NEUTRAL";
+  estimatedImpact?: string; // e.g. "~$10-$20/oz" or "~40-60 pips"
   reasoning: string;
 }
 
@@ -44,6 +45,7 @@ export interface CalendarEvent {
 export interface CurrencyImpact {
   currency: "USD" | "EUR" | "GBP" | "GOLD" | "XAUUSD" | string;
   sentiment: "BULLISH" | "BEARISH" | "NEUTRAL";
+  estimatedImpact?: string; // e.g. "~$15-$30/oz" or "~50-80 pips"
   reason: string;
 }
 

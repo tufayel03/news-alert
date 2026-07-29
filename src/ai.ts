@@ -7,7 +7,7 @@ const AI_MODELS = [
   "@cf/mistral/mistral-7b-instruct-v0.1",
 ];
 
-// Title patterns to immediately reject (opinion pieces, stock commentary, mining press releases, exploration projects, oil news, ETF advice)
+// Title patterns to immediately reject (opinion pieces, stock commentary, mining press releases, exploration projects, corporate deals, oil news, ETF advice)
 const REJECT_PATTERNS = [
   /is (now|it) a (good|bad) time/i,
   /here's (what|why|how)/i,
@@ -18,9 +18,9 @@ const REJECT_PATTERNS = [
   /investment strategy|etf guide|stock market/i,
   /s&p|nasdaq|dow jones|big tech|wall street|tech stocks|stock rotation|melt-up/i,
   /market experts|analysts (say|think|believe|suggest|discuss)/i,
-  /exploration|mining|greenfield|prospectivity|gold corp|silver corp|metals corp|mining corp|mine |drilling|drill |g\/t|deposit|epithermal|prospect|intersects|assays?|samples?|claims|property|resources corp/i,
+  /miner|gold miner|exploration|mining|greenfield|prospectivity|gold corp|silver corp|metals corp|mining corp|mine |drilling|drill |g\/t|deposit|epithermal|prospect|intersects|assays?|samples?|claims|property|resources corp/i,
   /oil|crude oil|wti|petroleum|opec/i,
-  /inc\.|ltd\.|corp\.|quarterly results|earnings release|advances|completes|reports surface|expands land|confirms/i,
+  /inc\.|ltd\.|corp\.|quarterly results|earnings release|advances|completes|reports surface|expands land|confirms|sale to|acquisition|merger|falls apart/i,
   /\?/i, // Discard speculative headlines containing question marks
 ];
 
@@ -52,8 +52,8 @@ SOURCE: ${article.source}
 CONTENT: "${article.content.slice(0, 350)}"
 
 CRITICAL REJECTION RULES (isRelevant = false):
-1. REJECT (isRelevant=false, impactLevel="NONE") if this is about a specific mining company, gold exploration project, drilling results, junior miners, or corporate press releases (e.g., BULGOLD, West Point Gold, BP Silver, ICG Silver, Sidney Resources, Emperor Metals).
-2. REJECT (isRelevant=false, impactLevel="NONE") if this news DOES NOT have major market strength to move spot Gold (XAUUSD) by at least $5/oz or USD by major pips.
+1. REJECT (isRelevant=false, impactLevel="NONE") if this is about a specific mining company, gold exploration project, drilling results, junior miners, corporate sales/mergers, or corporate press releases.
+2. REJECT (isRelevant=false, impactLevel="NONE") if this news DOES NOT have major market strength to move spot Gold (XAUUSD) by at least $5/oz or USD/Forex by major pips.
 3. REJECT (isRelevant=false, impactLevel="NONE") if this is stock market commentary, S&P 500, Nasdaq, Big Tech, oil news, earnings, or equity rotation.
 4. REJECT (isRelevant=false, impactLevel="NONE") if you CANNOT determine a direct, clear BULLISH or BEARISH directional impact on USD, EUR, GBP, or GOLD (XAUUSD).
 
@@ -74,8 +74,9 @@ Output STRICT RAW JSON:
   ],
   "affectedAssets": [
     {
-      "asset": "USD", // Single currency/asset only: "USD", "EUR", "GBP", or "GOLD"
+      "asset": "GOLD", // Single currency/asset only: "USD", "EUR", "GBP", or "GOLD"
       "sentiment": "BULLISH", // MUST be "BULLISH" or "BEARISH"
+      "estimatedImpact": "~$10-$25/oz", // For GOLD use $/oz (e.g. "~$10-$20/oz"), for Currencies use pips (e.g. "~30-60 pips")
       "reasoning": "Short reason (max 10 words)."
     }
   ]

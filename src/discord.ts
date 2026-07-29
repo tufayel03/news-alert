@@ -50,7 +50,8 @@ export async function sendDiscordAlert(
           const key = (a.asset || "").toUpperCase();
           const assetName = assetEmojis[key] || key;
           const sent = sentimentEmojis[a.sentiment] || a.sentiment;
-          return `• **${assetName}**: ${sent} — *${a.reasoning}*`;
+          const est = a.estimatedImpact && a.estimatedImpact.trim() !== "" ? ` (\`${a.estimatedImpact.trim()}\`)` : "";
+          return `• **${assetName}**: ${sent}${est} — *${a.reasoning}*`;
         })
         .join("\n")
     : null;

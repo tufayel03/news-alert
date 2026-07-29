@@ -103,6 +103,7 @@ Rules:
     {
       "currency": "${event.currencyCode}",
       "sentiment": "BULLISH", // "BULLISH" or "BEARISH"
+      "estimatedImpact": "~30-60 pips", // For GOLD use "$/oz" (e.g. "~$15-$30/oz"), for Currencies use pips (e.g. "~30-60 pips")
       "reason": "Actual better than forecast"
     }
   ]
@@ -167,7 +168,8 @@ export async function sendCalendarDiscordAlert(webhookUrl: string, verdict: Cale
           const key = (p.currency || "").toUpperCase();
           const name = currencyEmojis[key] || key;
           const sent = sentimentEmojis[p.sentiment] || p.sentiment;
-          return `• **${name}**: ${sent} — *${p.reason}*`;
+          const est = p.estimatedImpact && p.estimatedImpact.trim() !== "" ? ` (\`${p.estimatedImpact.trim()}\`)` : "";
+          return `• **${name}**: ${sent}${est} — *${p.reason}*`;
         })
         .join("\n")
     : null;
