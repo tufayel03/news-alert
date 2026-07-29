@@ -28,49 +28,60 @@ export async function sendDiscordAlert(
     USD: "💵 USD",
     EUR: "💶 EUR",
     GBP: "💷 GBP",
-    XAUUSD: "🥇 GOLD (XAUUSD)",
-    OIL: "🛢️ OIL (WTI)",
+    GOLD: "🥇 GOLD",
+    XAUUSD: "🥇 GOLD",
+    OIL: "🛢️ OIL",
   };
 
   const sentimentEmojis: Record<string, string> = {
-    BULLISH: "📈 Bullish",
-    BEARISH: "📉 Bearish",
-    NEUTRAL: "⚖️ Neutral",
+    BULLISH: "⬆️ BULLISH",
+    BEARISH: "⬇️ BEARISH",
+    NEUTRAL: "N NEUTRAL",
   };
 
-  // Format affected assets field
-  const assetsFormatted = analysis.affectedAssets && analysis.affectedAssets.length > 0
-    ? analysis.affectedAssets
+  // Filter ONLY directly impacted currencies (BULLISH or BEARISH)
+  const impactedAssets = (analysis.affectedAssets || []).filter(
+    (a) => a.sentiment === "BULLISH" || a.sentiment === "BEARISH"
+  );
+
+  const assetsFormatted = impactedAssets.length > 0
+    ? impactedAssets
         .map((a) => {
-          const assetName = assetEmojis[a.asset] || a.asset;
+          const key = (a.asset || "").toUpperCase();
+          const assetName = assetEmojis[key] || key;
           const sent = sentimentEmojis[a.sentiment] || a.sentiment;
-          return `• **${assetName}**: ${sent} - *${a.reasoning}*`;
+          return `• **${assetName}**: ${sent} — *${a.reasoning}*`;
         })
         .join("\n")
-    : "No direct major asset bias detected";
+    : null;
 
-  // Format key takeaways
+  // Format key takeaways (ultra short)
   const takeawaysFormatted = analysis.keyTakeaways && analysis.keyTakeaways.length > 0
     ? analysis.keyTakeaways.map((t) => `• ${t}`).join("\n")
     : analysis.headlineSummary;
+
+  const fields: { name: string; value: string; inline?: boolean }[] = [];
+
+  if (assetsFormatted) {
+    fields.push({
+      name: "🎯 Impacted Currencies & Assets",
+      value: assetsFormatted.slice(0, 1024),
+      inline: false,
+    });
+  }
+
+  fields.push({
+    name: "💡 Key Market Takeaway",
+    value: takeawaysFormatted.slice(0, 1024),
+    inline: false,
+  });
 
   const embed = {
     title: `${article.title}`,
     url: article.link,
     color: impactColors[analysis.impactLevel] || 0x3b82f6,
     description: `**${impactEmojis[analysis.impactLevel]}** | **Source**: [**${article.source}**](${article.link})\n\n${analysis.headlineSummary}`,
-    fields: [
-      {
-        name: "📊 Asset Sentiment & Directional Bias",
-        value: assetsFormatted.slice(0, 1024),
-        inline: false,
-      },
-      {
-        name: "💡 Key Market Takeaway",
-        value: takeawaysFormatted.slice(0, 1024),
-        inline: false,
-      },
-    ],
+    fields,
     footer: {
       text: "Forex & Commodity AI Alert System • Cloudflare Workers AI",
     },

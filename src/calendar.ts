@@ -76,7 +76,7 @@ export async function fetchEconomicEvents(): Promise<CalendarEvent[]> {
 }
 
 /**
- * Analyze an economic event release using Cloudflare AI to determine instant verdict on EURUSD, GBPUSD, XAUUSD, and USOIL.
+ * Analyze an economic event release using Cloudflare AI to determine instant verdict on USD, EUR, GBP, and GOLD.
  */
 export async function analyzeCalendarVerdict(env: Env, event: CalendarEvent): Promise<CalendarVerdict | null> {
   const actualStr = event.actual !== null ? String(event.actual) : "Released";
@@ -84,33 +84,26 @@ export async function analyzeCalendarVerdict(env: Env, event: CalendarEvent): Pr
   const previousStr = event.previous !== null ? String(event.previous) : "N/A";
 
   const prompt = `You are a high-speed institutional Forex Analyst.
-A major High-Impact Economic Indicator has just been published on ForexFactory:
+An Economic Indicator has been published on ForexFactory:
 
 EVENT: "${event.title}" (${event.currencyCode})
 ACTUAL: ${actualStr}
-FORECAST/CONSENSUS: ${consensusStr}
+FORECAST: ${consensusStr}
 PREVIOUS: ${previousStr}
 
-Analyze the immediate impact on trading pairs: EURUSD, GBPUSD, and XAUUSD (Gold).
-Provide output in STRICT RAW JSON format ONLY:
+Rules:
+1. Identify ONLY directly impacted currencies/assets ("USD", "EUR", "GBP", "GOLD"). Do NOT use currency pairs (no EURUSD, no GBPUSD).
+2. Do NOT include unaffected or neutral currencies. Only list currencies that are clearly BULLISH or BEARISH.
+3. Keep descriptions ultra-short (max 8 words).
+4. Output STRICT RAW JSON format ONLY:
 
 {
-  "verdictSummary": "One-line instant verdict on whether this data is Bullish or Bearish for ${event.currencyCode}.",
-  "pairSentiments": [
+  "verdictSummary": "One-line instant verdict (max 8 words).",
+  "currencyImpacts": [
     {
-      "pair": "EURUSD",
-      "sentiment": "BEARISH", // "BULLISH", "BEARISH", or "NEUTRAL"
-      "reason": "1-line direct impact explanation."
-    },
-    {
-      "pair": "GBPUSD",
-      "sentiment": "BEARISH",
-      "reason": "1-line direct impact explanation."
-    },
-    {
-      "pair": "XAUUSD",
-      "sentiment": "BEARISH",
-      "reason": "1-line direct impact explanation."
+      "currency": "${event.currencyCode}",
+      "sentiment": "BULLISH", // "BULLISH" or "BEARISH"
+      "reason": "Actual better than forecast"
     }
   ]
 }`;
@@ -150,45 +143,57 @@ export async function sendCalendarDiscordAlert(webhookUrl: string, verdict: Cale
   const consensusStr = evt.consensus !== null ? String(evt.consensus) : "N/A";
   const previousStr = evt.previous !== null ? String(evt.previous) : "N/A";
 
-  const pairEmojis: Record<string, string> = {
-    EURUSD: "💶 EURUSD",
-    GBPUSD: "💷 GBPUSD",
-    XAUUSD: "🥇 XAUUSD (Gold)",
+  const currencyEmojis: Record<string, string> = {
+    USD: "💵 USD",
+    EUR: "💶 EUR",
+    GBP: "💷 GBP",
+    GOLD: "🥇 GOLD",
+    XAUUSD: "🥇 GOLD",
   };
 
   const sentimentEmojis: Record<string, string> = {
-    BULLISH: "📈 BULLISH",
-    BEARISH: "📉 BEARISH",
-    NEUTRAL: "⚖️ NEUTRAL",
+    BULLISH: "⬆️ BULLISH",
+    BEARISH: "⬇️ BEARISH",
+    NEUTRAL: "N NEUTRAL",
   };
 
-  const pairsFormatted = verdict.pairSentiments && verdict.pairSentiments.length > 0
-    ? verdict.pairSentiments
+  const impactedList = (verdict.currencyImpacts || []).filter(
+    (c) => c.sentiment === "BULLISH" || c.sentiment === "BEARISH"
+  );
+
+  const impactsFormatted = impactedList.length > 0
+    ? impactedList
         .map((p) => {
-          const name = pairEmojis[p.pair] || p.pair;
+          const key = (p.currency || "").toUpperCase();
+          const name = currencyEmojis[key] || key;
           const sent = sentimentEmojis[p.sentiment] || p.sentiment;
           return `• **${name}**: ${sent} — *${p.reason}*`;
         })
         .join("\n")
-    : "No major pair bias";
+    : null;
+
+  const fields: { name: string; value: string; inline?: boolean }[] = [
+    {
+      name: "📊 Released Economic Data",
+      value: `• **Actual**: \`${actualStr}\`\n• **Forecast**: \`${consensusStr}\`\n• **Previous**: \`${previousStr}\``,
+      inline: true,
+    },
+  ];
+
+  if (impactsFormatted) {
+    fields.push({
+      name: "🎯 Currency & Commodity Impact",
+      value: impactsFormatted.slice(0, 1024),
+      inline: false,
+    });
+  }
 
   const embed = {
     title: `🚨 HIGH IMPACT DATA RELEASE: ${evt.title} [${evt.currencyCode}]`,
     url: "https://www.forexfactory.com/calendar",
     color: 0xDC2626, // Bright Red Embed
     description: `**ForexFactory Instant Release**\n\n**Verdict**: ${verdict.verdictSummary}`,
-    fields: [
-      {
-        name: "📊 Released Economic Data",
-        value: `• **Actual**: \`${actualStr}\`\n• **Forecast**: \`${consensusStr}\`\n• **Previous**: \`${previousStr}\``,
-        inline: true,
-      },
-      {
-        name: "🎯 Pair Impact (EURUSD, GBPUSD, XAUUSD)",
-        value: pairsFormatted.slice(0, 1024),
-        inline: false,
-      },
-    ],
+    fields,
     footer: {
       text: "ForexFactory Instant Verdict Sentinel • Cloudflare Workers AI",
     },
@@ -225,6 +230,12 @@ export async function sendPreAlertDiscordAlert(webhookUrl: string, evt: Calendar
     USD: "🇺🇸 USD",
     EUR: "🇪🇺 EUR",
     GBP: "🇬🇧 GBP",
+    AUD: "🇦🇺 AUD",
+    CAD: "🇨🇦 CAD",
+    JPY: "🇯🇵 JPY",
+    NZD: "🇳🇿 NZD",
+    CHF: "🇨🇭 CHF",
+    CNY: "🇨🇳 CNY",
   };
 
   const flag = currencyFlags[evt.currencyCode] || evt.currencyCode;
@@ -233,7 +244,7 @@ export async function sendPreAlertDiscordAlert(webhookUrl: string, evt: Calendar
     title: `⏰ 30-MIN PRE-ALERT: ${evt.title} [${flag}]`,
     url: "https://www.forexfactory.com/calendar",
     color: 0xF59E0B, // Amber Warning Embed
-    description: `**🚨 FOREXFACTORY RED FOLDER NEWS IN ~${minsRemaining} MINUTES!**\n\nHigh market volatility expected on **EURUSD**, **GBPUSD**, and **XAUUSD (Gold)**.`,
+    description: `**🚨 FOREXFACTORY RED FOLDER NEWS IN ~${minsRemaining} MINUTES!**`,
     fields: [
       {
         name: "📅 Event Details",
@@ -244,11 +255,6 @@ export async function sendPreAlertDiscordAlert(webhookUrl: string, evt: Calendar
         name: "📈 Market Forecast",
         value: `• **Forecast**: \`${forecastStr}\`\n• **Previous**: \`${previousStr}\``,
         inline: true,
-      },
-      {
-        name: "⚠️ Risk & Trading Warning",
-        value: "```\nExpect sharp spread widening, slippage, and rapid price spikes. Adjust stop-losses or reduce position sizes before the release.\n```",
-        inline: false,
       },
     ],
     footer: {
@@ -329,10 +335,8 @@ export async function processEconomicCalendar(env: Env) {
         verdict = {
           event: evt,
           verdictSummary: `${evt.title} data released: Actual ${evt.actual} vs Forecast ${evt.consensus || "N/A"}.`,
-          pairSentiments: [
-            { pair: "EURUSD", sentiment: "NEUTRAL", reason: "Raw data alert" },
-            { pair: "GBPUSD", sentiment: "NEUTRAL", reason: "Raw data alert" },
-            { pair: "XAUUSD", sentiment: "NEUTRAL", reason: "Raw data alert" },
+          currencyImpacts: [
+            { currency: evt.currencyCode, sentiment: "NEUTRAL", reason: "Raw data alert" },
           ],
         };
       }

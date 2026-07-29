@@ -15,7 +15,7 @@ export interface NewsArticle {
 }
 
 export interface AssetSentiment {
-  asset: "USD" | "EUR" | "GBP" | "XAUUSD" | "EURUSD" | "GBPUSD";
+  asset: "USD" | "EUR" | "GBP" | "GOLD" | "XAUUSD" | string;
   sentiment: "BULLISH" | "BEARISH" | "NEUTRAL";
   reasoning: string;
 }
@@ -41,13 +41,15 @@ export interface CalendarEvent {
   isBetterThanExpected?: boolean | null;
 }
 
+export interface CurrencyImpact {
+  currency: "USD" | "EUR" | "GBP" | "GOLD" | "XAUUSD" | string;
+  sentiment: "BULLISH" | "BEARISH" | "NEUTRAL";
+  reason: string;
+}
+
 export interface CalendarVerdict {
   event: CalendarEvent;
   verdictSummary: string;
-  pairSentiments: {
-    pair: "EURUSD" | "GBPUSD" | "XAUUSD";
-    sentiment: "BULLISH" | "BEARISH" | "NEUTRAL";
-    reason: string;
-  }[];
+  currencyImpacts: CurrencyImpact[];
 }
 

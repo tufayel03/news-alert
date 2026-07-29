@@ -13,30 +13,31 @@ export async function analyzeNewsWithAI(env: Env, article: NewsArticle): Promise
     return null;
   }
 
-  const prompt = `You are a high-speed Forex Macro Analyst specializing in USD, EUR, GBP, and Gold (XAUUSD).
-Analyze the following news headline and content snippet for high market volatility impact:
+  const prompt = `You are a high-speed Forex Macro Analyst specializing in USD, EUR, GBP, and Gold.
+Analyze the following news headline and content snippet for market impact:
 
 HEADLINE: "${article.title}"
 SOURCE: ${article.source}
 CONTENT: "${article.content.slice(0, 350)}"
 
 Rules:
-1. Provide all text in **Clean, Concise English**.
-2. Determine if this news is HIGH impact (Central Banks, Interest Rates, CPI, NFP, GDP, Geopolitics). Otherwise impactLevel="LOW" or "NONE".
-3. Keep descriptions super short (max 10 words per field) to save output tokens.
-4. Output STRICT RAW JSON matching this exact schema:
+1. Determine if this news is HIGH impact (Central Banks, Fed Interest Rates, CPI, NFP, GDP, Geopolitics). Otherwise impactLevel="LOW" or "NONE".
+2. Identify ONLY directly impacted currencies/assets ("USD", "EUR", "GBP", "GOLD"). Do NOT include currency pairs (no EURUSD, no GBPUSD).
+3. Do NOT include unaffected or neutral currencies in "affectedAssets". Only list currencies that are clearly BULLISH or BEARISH.
+4. Keep descriptions ultra-short (max 8 words) for instant reading.
+5. Output STRICT RAW JSON:
 
 {
   "isRelevant": true,
   "impactLevel": "HIGH", // "HIGH", "MEDIUM", "LOW", or "NONE"
-  "headlineSummary": "Short 1-line summary (max 10 words).",
+  "headlineSummary": "Short 1-line key point (max 8 words).",
   "keyTakeaways": [
-    "Key takeaway (max 10 words)"
+    "Key market takeaway (max 8 words)"
   ],
   "affectedAssets": [
     {
-      "asset": "USD", // One of: "USD", "EUR", "GBP", "XAUUSD"
-      "sentiment": "BULLISH", // "BULLISH", "BEARISH", or "NEUTRAL"
+      "asset": "USD", // Single currency/asset only: "USD", "EUR", "GBP", or "GOLD"
+      "sentiment": "BULLISH", // "BULLISH" or "BEARISH"
       "reasoning": "Short reason (max 6 words)."
     }
   ]
