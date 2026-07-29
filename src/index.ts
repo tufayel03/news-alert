@@ -81,7 +81,9 @@ async function processNews(env: Env) {
       };
     }
 
-    if (!analysis.isRelevant || analysis.impactLevel === "NONE") {
+    const hasDirectionalImpact = analysis.affectedAssets && analysis.affectedAssets.some((a) => a.sentiment === "BULLISH" || a.sentiment === "BEARISH");
+
+    if (!analysis.isRelevant || analysis.impactLevel === "NONE" || (!isRawFallback && !hasDirectionalImpact)) {
       nonRelevantCount++;
       await markArticleAlerted(env, article.id, article.title);
       continue;

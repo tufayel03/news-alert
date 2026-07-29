@@ -7,7 +7,7 @@ const AI_MODELS = [
   "@cf/mistral/mistral-7b-instruct-v0.1",
 ];
 
-// Title patterns to immediately reject (opinion pieces, stock market commentary, ETF advice, clickbait questions)
+// Title patterns to immediately reject (opinion pieces, stock commentary, mining press releases, oil news, ETF advice)
 const REJECT_PATTERNS = [
   /is (now|it) a (good|bad) time/i,
   /here's (what|why|how)/i,
@@ -18,6 +18,9 @@ const REJECT_PATTERNS = [
   /investment strategy|etf guide|stock market/i,
   /s&p|nasdaq|dow jones|big tech|wall street|tech stocks|stock rotation|melt-up/i,
   /market experts|analysts (say|think|believe|suggest|discuss)/i,
+  /exploration|mining|greenfield|prospectivity|gold corp|mining corp|mine /i,
+  /oil|crude oil|wti|petroleum|opec/i,
+  /inc\.|ltd\.|corp\.|quarterly results|earnings release/i,
   /\?/i, // Discard speculative headlines containing question marks
 ];
 
@@ -27,10 +30,10 @@ export async function analyzeNewsWithAI(env: Env, article: NewsArticle): Promise
     return null;
   }
 
-  // Pre-filter: Discard stock commentary, opinion, and investment advice articles immediately
+  // Pre-filter: Discard stock commentary, mining corporate news, oil news, and opinion pieces immediately
   for (const pattern of REJECT_PATTERNS) {
     if (pattern.test(article.title)) {
-      console.log(`[REJECT OPINION/EQUITY COMMENTARY] Skipping: "${article.title}"`);
+      console.log(`[REJECT OPINION/CORPORATE/OIL] Skipping: "${article.title}"`);
       return {
         isRelevant: false,
         impactLevel: "NONE",
@@ -49,9 +52,10 @@ SOURCE: ${article.source}
 CONTENT: "${article.content.slice(0, 350)}"
 
 CRITICAL REJECTION RULES (isRelevant = false):
-1. REJECT (isRelevant=false, impactLevel="NONE") if this is stock market commentary, S&P 500, Nasdaq, Big Tech, earnings, or equity rotation news.
-2. REJECT (isRelevant=false, impactLevel="NONE") if this is an opinion piece, historical analysis, or ETF/stock investment advice (e.g. "Why money is leaving", "Is now a good time", "S&P melt-up").
-3. REJECT (isRelevant=false, impactLevel="NONE") if this is just discussing or recapping scheduled economic data (CPI, inflation, employment numbers) that traders already track on economic calendars.
+1. REJECT (isRelevant=false, impactLevel="NONE") if this is about a specific mining company, exploration property, corporate gold/mining stock, or oil news.
+2. REJECT (isRelevant=false, impactLevel="NONE") if this is stock market commentary, S&P 500, Nasdaq, Big Tech, earnings, or equity rotation news.
+3. REJECT (isRelevant=false, impactLevel="NONE") if this is an opinion piece, historical analysis, or ETF/stock investment advice.
+4. REJECT (isRelevant=false, impactLevel="NONE") if you CANNOT determine a clear BULLISH or BEARISH directional impact on USD, EUR, GBP, or GOLD (XAUUSD).
 
 CRITICAL ACCEPTANCE RULES (isRelevant = true, impactLevel = "HIGH"):
 ACCEPT ONLY IF this is REAL BREAKING GEOPOLITICAL OR MAJOR FUNDAMENTAL NEWS:
@@ -62,7 +66,7 @@ ACCEPT ONLY IF this is REAL BREAKING GEOPOLITICAL OR MAJOR FUNDAMENTAL NEWS:
 Output STRICT RAW JSON:
 
 {
-  "isRelevant": true, // false if opinion/analysis/economic recap
+  "isRelevant": true, // false if opinion/corporate/unclear impact
   "impactLevel": "HIGH", // "HIGH" for breaking news, otherwise "NONE"
   "headlineSummary": "Concise 2-line summary explaining the breaking news event.",
   "keyTakeaways": [
@@ -71,7 +75,7 @@ Output STRICT RAW JSON:
   "affectedAssets": [
     {
       "asset": "USD", // Single currency/asset only: "USD", "EUR", "GBP", or "GOLD"
-      "sentiment": "BULLISH", // "BULLISH" or "BEARISH"
+      "sentiment": "BULLISH", // MUST be "BULLISH" or "BEARISH"
       "reasoning": "Short reason (max 10 words)."
     }
   ]
@@ -95,6 +99,24 @@ Output STRICT RAW JSON:
       if (!jsonMatch) continue;
 
       const parsed = JSON.parse(jsonMatch[0]) as ImpactAnalysis;
+
+      // Require at least 1 asset with clear BULLISH or BEARISH sentiment
+      const validAssets = (parsed.affectedAssets || []).filter(
+        (a) => a.sentiment === "BULLISH" || a.sentiment === "BEARISH"
+      );
+
+      if (validAssets.length === 0) {
+        console.log(`[REJECT NO DIRECTIONAL BIAS] Skipping "${article.title}" - No clear directional impact determined.`);
+        return {
+          isRelevant: false,
+          impactLevel: "NONE",
+          headlineSummary: "",
+          keyTakeaways: [],
+          affectedAssets: [],
+        };
+      }
+
+      parsed.affectedAssets = validAssets;
       return parsed;
     } catch (err) {
       console.warn(`Model ${model} failed, trying fallback:`, err);
