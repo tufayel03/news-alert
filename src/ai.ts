@@ -7,30 +7,59 @@ const AI_MODELS = [
   "@cf/mistral/mistral-7b-instruct-v0.1",
 ];
 
+// Title patterns to immediately reject (opinion pieces, ETF advice, historical analyses, clickbait)
+const REJECT_PATTERNS = [
+  /is (now|it) a (good|bad) time/i,
+  /here's what/i,
+  /should you (buy|sell|invest)/i,
+  /top \d+/i,
+  /what history (says|shows)/i,
+  /reasons to (buy|sell)/i,
+  /investment strategy|etf guide/i,
+];
+
 export async function analyzeNewsWithAI(env: Env, article: NewsArticle): Promise<ImpactAnalysis | null> {
   if (!env.AI) {
-    console.warn("Workers AI binding 'AI' is not bound in Cloudflare. Please add Workers AI binding in Cloudflare Dashboard -> Workers & Pages -> news-alert -> Settings -> Bindings -> Workers AI.");
+    console.warn("Workers AI binding 'AI' is not bound in Cloudflare.");
     return null;
   }
 
-  const prompt = `You are a high-speed Forex Macro Analyst specializing in USD, EUR, GBP, and Gold.
-Analyze the following news headline and content snippet for market impact:
+  // Pre-filter: Discard opinion / investment advice articles immediately
+  for (const pattern of REJECT_PATTERNS) {
+    if (pattern.test(article.title)) {
+      console.log(`[REJECT OPINION/ANALYSIS] Skipping: "${article.title}"`);
+      return {
+        isRelevant: false,
+        impactLevel: "NONE",
+        headlineSummary: "",
+        keyTakeaways: [],
+        affectedAssets: [],
+      };
+    }
+  }
+
+  const prompt = `You are an institutional Forex & Gold Macro Fundamental Analyst.
+Analyze the following news headline for real-world breaking market impact:
 
 HEADLINE: "${article.title}"
 SOURCE: ${article.source}
 CONTENT: "${article.content.slice(0, 350)}"
 
-Rules:
-1. Determine if this news is HIGH impact (Central Banks, Fed Interest Rates, CPI, NFP, GDP, Geopolitics). Otherwise impactLevel="LOW" or "NONE".
-2. Identify ONLY directly impacted currencies/assets ("USD", "EUR", "GBP", "GOLD"). Do NOT include currency pairs (no EURUSD, no GBPUSD).
-3. Do NOT include unaffected or neutral currencies in "affectedAssets". Only list currencies that are clearly BULLISH or BEARISH.
-4. Provide a clear, concise headline summary around 2 lines (approx 20-30 words).
-5. Output STRICT RAW JSON:
+CRITICAL REJECTION RULES (isRelevant = false):
+1. REJECT (isRelevant=false, impactLevel="NONE") if this is an opinion piece, market commentary, historical analysis, or ETF/investment advice (e.g. "Is now a good time to buy", "What history says", "Should you invest").
+2. REJECT (isRelevant=false, impactLevel="NONE") if this is just discussing or recapping scheduled economic data (CPI, inflation, employment numbers) that traders already track on economic calendars.
+
+CRITICAL ACCEPTANCE RULES (isRelevant = true, impactLevel = "HIGH"):
+ACCEPT ONLY IF this is REAL BREAKING GEOPOLITICAL OR MAJOR FUNDAMENTAL NEWS:
+- Geopolitical events: Wars, military strikes/attacks, Strait of Hormuz, Middle East escalation, sanctions, tariffs, trade war.
+- Major breaking central bank policy shifts or emergency announcements.
+
+Output STRICT RAW JSON:
 
 {
-  "isRelevant": true,
-  "impactLevel": "HIGH", // "HIGH", "MEDIUM", "LOW", or "NONE"
-  "headlineSummary": "Concise 2-line summary explaining the news context.",
+  "isRelevant": true, // false if opinion/analysis/economic recap
+  "impactLevel": "HIGH", // "HIGH" for breaking news, otherwise "NONE"
+  "headlineSummary": "Concise 2-line summary explaining the breaking news event.",
   "keyTakeaways": [
     "Main market takeaway (1-2 sentences)."
   ],
