@@ -4,10 +4,6 @@ import { hashString } from "./kv";
 
 const RSS_SOURCES = [
   {
-    name: "Investing.com Forex",
-    url: "https://www.investing.com/rss/forex.rss",
-  },
-  {
     name: "Yahoo Finance Commodities & Macro",
     url: "https://finance.yahoo.com/rss/headline?s=GC=F,CL=F,DX-Y.NYB,EURUSD=X",
   },
