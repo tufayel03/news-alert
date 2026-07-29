@@ -7,7 +7,7 @@ const AI_MODELS = [
   "@cf/mistral/mistral-7b-instruct-v0.1",
 ];
 
-// Title patterns to immediately reject (opinion pieces, stock commentary, mining press releases, oil news, ETF advice)
+// Title patterns to immediately reject (opinion pieces, stock commentary, mining press releases, exploration projects, oil news, ETF advice)
 const REJECT_PATTERNS = [
   /is (now|it) a (good|bad) time/i,
   /here's (what|why|how)/i,
@@ -18,9 +18,9 @@ const REJECT_PATTERNS = [
   /investment strategy|etf guide|stock market/i,
   /s&p|nasdaq|dow jones|big tech|wall street|tech stocks|stock rotation|melt-up/i,
   /market experts|analysts (say|think|believe|suggest|discuss)/i,
-  /exploration|mining|greenfield|prospectivity|gold corp|mining corp|mine /i,
+  /exploration|mining|greenfield|prospectivity|gold corp|silver corp|metals corp|mining corp|mine |drilling|drill |g\/t|deposit|epithermal|prospect|intersects|assays?|samples?|claims|property|resources corp/i,
   /oil|crude oil|wti|petroleum|opec/i,
-  /inc\.|ltd\.|corp\.|quarterly results|earnings release/i,
+  /inc\.|ltd\.|corp\.|quarterly results|earnings release|advances|completes|reports surface|expands land|confirms/i,
   /\?/i, // Discard speculative headlines containing question marks
 ];
 
@@ -33,7 +33,7 @@ export async function analyzeNewsWithAI(env: Env, article: NewsArticle): Promise
   // Pre-filter: Discard stock commentary, mining corporate news, oil news, and opinion pieces immediately
   for (const pattern of REJECT_PATTERNS) {
     if (pattern.test(article.title)) {
-      console.log(`[REJECT OPINION/CORPORATE/OIL] Skipping: "${article.title}"`);
+      console.log(`[REJECT MINING/CORPORATE/OIL] Skipping: "${article.title}"`);
       return {
         isRelevant: false,
         impactLevel: "NONE",
@@ -52,16 +52,16 @@ SOURCE: ${article.source}
 CONTENT: "${article.content.slice(0, 350)}"
 
 CRITICAL REJECTION RULES (isRelevant = false):
-1. REJECT (isRelevant=false, impactLevel="NONE") if this is about a specific mining company, exploration property, corporate gold/mining stock, or oil news.
-2. REJECT (isRelevant=false, impactLevel="NONE") if this is stock market commentary, S&P 500, Nasdaq, Big Tech, earnings, or equity rotation news.
-3. REJECT (isRelevant=false, impactLevel="NONE") if this is an opinion piece, historical analysis, or ETF/stock investment advice.
-4. REJECT (isRelevant=false, impactLevel="NONE") if you CANNOT determine a clear BULLISH or BEARISH directional impact on USD, EUR, GBP, or GOLD (XAUUSD).
+1. REJECT (isRelevant=false, impactLevel="NONE") if this is about a specific mining company, gold exploration project, drilling results, junior miners, or corporate press releases (e.g., BULGOLD, West Point Gold, BP Silver, ICG Silver, Sidney Resources, Emperor Metals).
+2. REJECT (isRelevant=false, impactLevel="NONE") if this news DOES NOT have major market strength to move spot Gold (XAUUSD) by at least $5/oz or USD by major pips.
+3. REJECT (isRelevant=false, impactLevel="NONE") if this is stock market commentary, S&P 500, Nasdaq, Big Tech, oil news, earnings, or equity rotation.
+4. REJECT (isRelevant=false, impactLevel="NONE") if you CANNOT determine a direct, clear BULLISH or BEARISH directional impact on USD, EUR, GBP, or GOLD (XAUUSD).
 
 CRITICAL ACCEPTANCE RULES (isRelevant = true, impactLevel = "HIGH"):
-ACCEPT ONLY IF this is REAL BREAKING GEOPOLITICAL OR MAJOR FUNDAMENTAL NEWS:
-- Geopolitical events: Wars, military strikes/attacks, Strait of Hormuz, Middle East escalation, sanctions, tariffs, trade war.
-- Major breaking central bank policy shifts or emergency announcements.
-- Direct macro shocks impacting USD, EUR, GBP, or Gold.
+ACCEPT ONLY REAL HIGH-STRENGTH MACRO / GEOPOLITICAL SHOCKS (Capable of moving Gold >$5/oz or USD substantially):
+- Geopolitical shock events: Wars, military strikes/attacks, Strait of Hormuz closure, Middle East escalation, major international sanctions, tariffs, trade war.
+- Major breaking Central Bank policy shifts or emergency Federal Reserve rate announcements.
+- Direct global macro shocks impacting USD, EUR, GBP, or Gold.
 
 Output STRICT RAW JSON:
 

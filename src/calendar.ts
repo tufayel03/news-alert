@@ -191,9 +191,6 @@ export async function sendCalendarDiscordAlert(webhookUrl: string, verdict: Cale
     color: 0xDC2626, // Bright Red Embed
     description,
     fields,
-    footer: {
-      text: "ForexFactory Instant Verdict Sentinel • Cloudflare Workers AI",
-    },
     timestamp: new Date().toISOString(),
   };
 
@@ -254,9 +251,6 @@ export async function sendPreAlertDiscordAlert(webhookUrl: string, evt: Calendar
         inline: true,
       },
     ],
-    footer: {
-      text: "ForexFactory Pre-Alert Sentinel • Cloudflare Workers AI",
-    },
     timestamp: new Date().toISOString(),
   };
 

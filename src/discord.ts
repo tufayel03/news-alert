@@ -79,9 +79,6 @@ export async function sendDiscordAlert(
     color: impactColors[analysis.impactLevel] || 0x3b82f6,
     description,
     fields,
-    footer: {
-      text: "Forex & Commodity AI Alert System • Cloudflare Workers AI",
-    },
     timestamp: new Date().toISOString(),
   };
 
