@@ -290,7 +290,7 @@ export function renderDashboardHTML(status: {
         <span class="pair-badge">🛢️ USOIL (WTI)</span>
       </div>
       <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.75rem;">
-        ⚡ <strong>Features</strong>: Scrapes ForexLive & Investing.com | ⏰ 30-Min ForexFactory Red Folder Pre-Alerts | 📊 Instant CPI & Fed Rate Data Release Verdicts.
+        ⚡ <strong>Features</strong>: Scrapes Investing.com & Yahoo Finance | ⏰ 30-Min ForexFactory Red Folder Pre-Alerts | 📊 Instant CPI & Fed Rate Data Release Verdicts.
       </p>
     </div>
 

@@ -18,10 +18,11 @@ const COUNTRY_CURRENCY_MAP: Record<string, string> = {
   "canada": "CAD",
   "switzerland": "CHF",
   "new-zealand": "NZD",
+  "china": "CNY",
 };
 
 /**
- * Fetch high impact economic calendar events from FXEmpire Live API
+ * Fetch strictly High Impact (Red Folder) economic calendar events
  */
 export async function fetchEconomicEvents(): Promise<CalendarEvent[]> {
   try {
@@ -45,12 +46,12 @@ export async function fetchEconomicEvents(): Promise<CalendarEvent[]> {
       for (const day of data.calendar) {
         if (!Array.isArray(day.events)) continue;
         for (const item of day.events) {
+          // RED FOLDER / HIGH IMPACT ONLY (item.impact === 3 or "3" or "HIGH")
+          if (item.impact !== 3 && item.impact !== "3" && item.impact !== "HIGH") continue;
+
           const rawCountry = (item.country || "").toLowerCase().trim();
           const currency = COUNTRY_CURRENCY_MAP[rawCountry] || (item.currencyCode || "").toUpperCase();
-          if (!["USD", "EUR", "GBP", "AUD", "CAD", "JPY", "NZD", "CHF"].includes(currency)) continue;
-
-          const impactMap: Record<number, string> = { 3: "HIGH", 2: "MEDIUM", 1: "LOW" };
-          const volatility = impactMap[item.impact] || "HIGH";
+          if (!["USD", "EUR", "GBP", "AUD", "CAD", "JPY", "NZD", "CHF", "CNY"].includes(currency)) continue;
 
           events.push({
             id: String(item.id || `evt-${item.name}-${item.date}`),
@@ -58,7 +59,7 @@ export async function fetchEconomicEvents(): Promise<CalendarEvent[]> {
             countryCode: rawCountry || "US",
             currencyCode: currency,
             dateUtc: item.date || new Date().toISOString(),
-            volatility,
+            volatility: "HIGH",
             actual: item.actual !== "" && item.actual !== undefined ? item.actual : null,
             consensus: item.forecast !== "" && item.forecast !== undefined ? item.forecast : null,
             previous: item.previous !== "" && item.previous !== undefined ? item.previous : null,
@@ -287,8 +288,9 @@ export async function processEconomicCalendar(env: Env) {
   const webhookUrl = webhookInfo.url;
 
   for (const evt of events) {
-    // Only check Red Folder currencies: USD, EUR, GBP
-    if (!["USD", "EUR", "GBP"].includes(evt.currencyCode)) continue;
+    // Red Folder (High Impact) events only
+    if (evt.volatility !== "HIGH") continue;
+    if (!["USD", "EUR", "GBP", "AUD", "CAD", "JPY", "NZD", "CHF", "CNY"].includes(evt.currencyCode)) continue;
 
     const eventTimeMs = new Date(evt.dateUtc).getTime();
     const diffMins = (eventTimeMs - nowMs) / (1000 * 60);
