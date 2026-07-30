@@ -59,7 +59,7 @@ async function processNews(env: Env) {
     console.log(`Analyzing new article: "${article.title}" (${article.source})`);
 
     let analysis = await analyzeNewsWithAI(env, article);
-    if (!analysis || !analysis.isRelevant || analysis.impactLevel === "NONE") {
+    if (!analysis || !analysis.isRelevant || analysis.impactLevel !== "HIGH") {
       nonRelevantCount++;
       await markArticleAlerted(env, article.id, article.title);
       continue;
@@ -73,15 +73,14 @@ async function processNews(env: Env) {
       continue;
     }
 
-    const minImpact = (env.MIN_IMPACT_LEVEL || "HIGH").toUpperCase();
-    const shouldAlert = minImpact === "ALL" || analysis.impactLevel === minImpact || (minImpact === "MEDIUM" && analysis.impactLevel === "HIGH");
+    const shouldAlert = analysis.impactLevel === "HIGH";
 
     if (shouldAlert && webhookUrl) {
-      console.log(`[ALERT] AI Impact ${analysis.impactLevel}: Sending Discord alert for "${article.title}"`);
+      console.log(`[ALERT] AI High Impact: Sending Discord alert for "${article.title}"`);
       const sent = await sendDiscordAlert(webhookUrl, article, analysis);
       if (sent) alertedCount++;
     } else {
-      console.log(`Skipped alert for "${article.title}" (Impact: ${analysis.impactLevel}, Filter: ${minImpact})`);
+      console.log(`Skipped alert for "${article.title}" (Impact: ${analysis.impactLevel})`);
     }
 
     await markArticleAlerted(env, article.id, article.title);

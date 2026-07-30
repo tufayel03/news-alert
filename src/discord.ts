@@ -10,18 +10,12 @@ export async function sendDiscordAlert(
     return false;
   }
 
-  const impactColors = {
+  const impactColors: Record<string, number> = {
     HIGH: 0xdc2626, // Crimson Red
-    MEDIUM: 0xf59e0b, // Amber Gold
-    LOW: 0x10b981, // Emerald Green
-    NONE: 0x6b7280, // Gray
   };
 
-  const impactEmojis = {
-    HIGH: "🔴 HIGH IMPACT",
-    MEDIUM: "🟡 MEDIUM IMPACT",
-    LOW: "🟢 LOW IMPACT",
-    NONE: "⚪ INFO",
+  const impactEmojis: Record<string, string> = {
+    HIGH: "🔴 HIGH IMPACT (RED FOLDER)",
   };
 
   const assetEmojis: Record<string, string> = {
@@ -61,7 +55,7 @@ export async function sendDiscordAlert(
     ? analysis.keyTakeaways.map((t) => `• ${t}`).join("\n")
     : analysis.headlineSummary;
 
-  let description = `**${impactEmojis[analysis.impactLevel]}** | **Source**: [**${article.source}**](${article.link})\n\n${analysis.headlineSummary}`;
+  let description = `**${impactEmojis[analysis.impactLevel] || "🔴 HIGH IMPACT (RED FOLDER)"}** | **Source**: [**${article.source}**](${article.link})\n\n${analysis.headlineSummary}`;
   if (assetsFormatted) {
     description += `\n\n${assetsFormatted}`;
   }
@@ -77,7 +71,7 @@ export async function sendDiscordAlert(
   const embed = {
     title: `${article.title}`,
     url: article.link,
-    color: impactColors[analysis.impactLevel] || 0x3b82f6,
+    color: impactColors[analysis.impactLevel] || 0xdc2626,
     description,
     fields,
     timestamp: new Date().toISOString(),

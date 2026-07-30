@@ -101,6 +101,18 @@ Output STRICT RAW JSON:
 
       const parsed = JSON.parse(jsonMatch[0]) as ImpactAnalysis;
 
+      // Strictly enforce HIGH impact level only
+      if (parsed.impactLevel !== "HIGH") {
+        console.log(`[REJECT NON-HIGH IMPACT] Skipping "${article.title}" - Impact level is "${parsed.impactLevel}" (Only HIGH impact allowed).`);
+        return {
+          isRelevant: false,
+          impactLevel: "NONE",
+          headlineSummary: "",
+          keyTakeaways: [],
+          affectedAssets: [],
+        };
+      }
+
       // Require at least 1 asset with clear BULLISH or BEARISH sentiment
       const validAssets = (parsed.affectedAssets || []).filter(
         (a) => a.sentiment === "BULLISH" || a.sentiment === "BEARISH"

@@ -22,6 +22,70 @@ const COUNTRY_CURRENCY_MAP: Record<string, string> = {
 };
 
 /**
+ * Verifies if an economic event matches ForexFactory Red Folder (High Impact) standards.
+ */
+export function isRedFolderHighImpactEvent(title: string, currency: string): boolean {
+  const t = title.toLowerCase().trim();
+
+  // Explicit exclude list for events that third-party APIs rate high but ForexFactory marks as Low/Medium (Yellow/Orange)
+  const EXCLUDE_PATTERNS = [
+    /building (permits|approvals)/i,
+    /import (prices|price)/i,
+    /export (prices|price)/i,
+    /consumer spending/i,
+    /business confidence/i,
+    /economic barometer/i,
+    /private payrolls/i,
+    /money supply/i,
+    /current account/i,
+    /leading index/i,
+    /coincident index/i,
+    /tertiary industry/i,
+    /housing starts/i,
+    /existing home sales/i,
+    /new home sales/i,
+    /construction spending/i,
+    /wholesale inventories/i,
+    /factory orders/i,
+    /capacity utilization/i,
+    /buba|bundesbank/i,
+    /gfk/i,
+  ];
+
+  for (const pattern of EXCLUDE_PATTERNS) {
+    if (pattern.test(t)) return false;
+  }
+
+  // Currency-specific ForexFactory Red Folder rules:
+  // 1. EUR GDP & Unemployment Rate are Yellow/Orange in ForexFactory
+  if (currency === "EUR" && (t.includes("gdp") || t.includes("unemployment rate"))) {
+    return false;
+  }
+
+  // 2. Region-specific Consumer Confidence filter: ForexFactory ONLY lists Conference Board (CB) or UoM Consumer Sentiment as High Impact for USD
+  if (t.includes("consumer confidence") && currency !== "USD") {
+    return false;
+  }
+
+  // Whitelist patterns for ForexFactory Red Folder events
+  const HIGH_IMPACT_PATTERNS = [
+    /rate (decision|statement)|policy rate|official bank rate|funds rate|interest rate/i,
+    /fomc|monetary policy/i,
+    /non[\s-]*farm|nfp|payrolls?|jobless claims|employment change/i,
+    /unemployment rate/i,
+    /average hourly earnings/i,
+    /cpi|consumer price index|ppi|producer price index|pce price/i,
+    /advance gdp|prelim gdp|gdp (m\/m|q\/q|y\/y)|gross domestic product/i,
+    /retail sales/i,
+    /ism (manufacturing|services|non-manufacturing)/i,
+    /speaks|speech|press conference/i,
+    /cb consumer confidence|uom consumer sentiment|michigan consumer/i,
+  ];
+
+  return HIGH_IMPACT_PATTERNS.some((pattern) => pattern.test(t));
+}
+
+/**
  * Fetch strictly High Impact (Red Folder) economic calendar events (All pages)
  */
 export async function fetchEconomicEvents(): Promise<CalendarEvent[]> {
@@ -51,12 +115,16 @@ export async function fetchEconomicEvents(): Promise<CalendarEvent[]> {
         if (!Array.isArray(day.events)) continue;
         for (const item of day.events) {
           pageEventCount++;
+          const impactStr = String(item.impact || "").toUpperCase();
           // RED FOLDER / HIGH IMPACT ONLY (item.impact === 3 or "3" or "HIGH")
-          if (item.impact !== 3 && item.impact !== "3" && item.impact !== "HIGH") continue;
+          if (item.impact !== 3 && item.impact !== "3" && impactStr !== "HIGH") continue;
 
           const rawCountry = (item.country || "").toLowerCase().trim();
           const currency = COUNTRY_CURRENCY_MAP[rawCountry] || (item.currencyCode || "").toUpperCase();
           if (!["USD", "EUR", "GBP", "AUD", "CAD", "JPY", "NZD", "CHF", "CNY"].includes(currency)) continue;
+
+          // Strict ForexFactory Red Folder verification
+          if (!isRedFolderHighImpactEvent(item.name || "", currency)) continue;
 
           events.push({
             id: String(item.id || `evt-${item.name}-${item.date}`),
