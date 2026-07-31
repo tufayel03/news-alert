@@ -24,6 +24,16 @@ const REJECT_PATTERNS = [
   /\?/i, // Discard speculative headlines containing question marks
 ];
 
+/**
+ * Parse estimated dollar impact for Gold (e.g. "~$10-$20/oz" -> 20, "$30/oz" -> 30)
+ */
+function getGoldImpactAmount(estimatedImpact?: string): number {
+  if (!estimatedImpact) return 0;
+  const matches = estimatedImpact.match(/\d+(\.\d+)?/g);
+  if (!matches || matches.length === 0) return 0;
+  return Math.max(...matches.map(Number));
+}
+
 export async function analyzeNewsWithAI(env: Env, article: NewsArticle): Promise<ImpactAnalysis | null> {
   if (!env.AI) {
     console.warn("Workers AI binding 'AI' is not bound in Cloudflare.");
@@ -53,21 +63,21 @@ CONTENT: "${article.content.slice(0, 350)}"
 
 CRITICAL REJECTION RULES (isRelevant = false):
 1. REJECT (isRelevant=false, impactLevel="NONE") if this is about a specific mining company, gold exploration project, drilling results, junior miners, corporate sales/mergers, or corporate press releases.
-2. REJECT (isRelevant=false, impactLevel="NONE") if this news DOES NOT have major market strength to move spot Gold (XAUUSD) by at least $5/oz or USD/Forex by major pips.
+2. REJECT (isRelevant=false, impactLevel="NONE") if this news DOES NOT have massive market strength to move spot Gold (XAUUSD) by AT LEAST $25/oz or USD/Forex by at least 60+ pips. Reject routine $5-$15/oz gold commentary, daily price noise, analyst opinions, or minor updates.
 3. REJECT (isRelevant=false, impactLevel="NONE") if this is stock market commentary, S&P 500, Nasdaq, Big Tech, oil news, earnings, or equity rotation.
 4. REJECT (isRelevant=false, impactLevel="NONE") if you CANNOT determine a direct, clear BULLISH or BEARISH directional impact on USD, EUR, GBP, or GOLD (XAUUSD).
 
 CRITICAL ACCEPTANCE RULES (isRelevant = true, impactLevel = "HIGH"):
-ACCEPT ONLY REAL HIGH-STRENGTH MACRO / GEOPOLITICAL SHOCKS (Capable of moving Gold >$5/oz or USD substantially):
-- Geopolitical shock events: Wars, military strikes/attacks, Strait of Hormuz closure, Middle East escalation, major international sanctions, tariffs, trade war.
-- Major breaking Central Bank policy shifts or emergency Federal Reserve rate announcements.
-- Direct global macro shocks impacting USD, EUR, GBP, or Gold.
+ACCEPT ONLY EXTREME HIGH-STRENGTH BREAKING MACRO / GEOPOLITICAL SHOCKS (Capable of moving spot Gold by at least $25/oz or USD substantially by 60+ pips):
+- Major Geopolitical Shocks: Wars, military strikes, Strait of Hormuz closure, major international sanctions, emergency trade tariffs.
+- Major Breaking Central Bank policy shifts or emergency Federal Reserve rate announcements.
+- Direct global macro shocks impacting USD, EUR, GBP, or Gold by $25+/oz.
 
 Output STRICT RAW JSON:
 
 {
-  "isRelevant": true, // false if opinion/corporate/unclear impact
-  "impactLevel": "HIGH", // "HIGH" for breaking news, otherwise "NONE"
+  "isRelevant": true, // false if opinion/corporate/unclear impact or impact < $25/oz for Gold
+  "impactLevel": "HIGH", // "HIGH" for breaking news with >= $25/oz impact on Gold, otherwise "NONE"
   "headlineSummary": "Concise 2-line summary explaining the breaking news event.",
   "keyTakeaways": [
     "Main market takeaway (1-2 sentences)."
@@ -76,7 +86,7 @@ Output STRICT RAW JSON:
     {
       "asset": "GOLD", // Single currency/asset only: "USD", "EUR", "GBP", or "GOLD"
       "sentiment": "BULLISH", // MUST be "BULLISH" or "BEARISH"
-      "estimatedImpact": "~$10-$25/oz", // For GOLD use $/oz (e.g. "~$10-$20/oz"), for Currencies use pips (e.g. "~30-60 pips")
+      "estimatedImpact": "~$25-$50/oz", // For GOLD use $/oz (MUST BE AT LEAST $25/oz), for Currencies use pips (e.g. "~60-100 pips")
       "reasoning": "Short reason (max 10 words)."
     }
   ]
@@ -113,13 +123,23 @@ Output STRICT RAW JSON:
         };
       }
 
-      // Require at least 1 asset with clear BULLISH or BEARISH sentiment
-      const validAssets = (parsed.affectedAssets || []).filter(
-        (a) => a.sentiment === "BULLISH" || a.sentiment === "BEARISH"
-      );
+      // Filter assets: Require clear BULLISH/BEARISH sentiment AND minimum $25/oz threshold for Gold
+      const validAssets = (parsed.affectedAssets || []).filter((a) => {
+        if (a.sentiment !== "BULLISH" && a.sentiment !== "BEARISH") return false;
+
+        const assetUpper = (a.asset || "").toUpperCase();
+        if (assetUpper === "GOLD" || assetUpper === "XAUUSD") {
+          const dollarAmount = getGoldImpactAmount(a.estimatedImpact);
+          if (dollarAmount < 25) {
+            console.log(`[REJECT SMALL GOLD IMPACT] Skipping "${article.title}" - Gold impact estimated at $${dollarAmount}/oz (Minimum required is $25/oz).`);
+            return false;
+          }
+        }
+        return true;
+      });
 
       if (validAssets.length === 0) {
-        console.log(`[REJECT NO DIRECTIONAL BIAS] Skipping "${article.title}" - No clear directional impact determined.`);
+        console.log(`[REJECT NO QUALIFYING ASSETS] Skipping "${article.title}" - No assets met the minimum impact threshold (Gold >= $25/oz).`);
         return {
           isRelevant: false,
           impactLevel: "NONE",
