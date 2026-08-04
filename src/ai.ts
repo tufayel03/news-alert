@@ -7,7 +7,7 @@ const AI_MODELS = [
   "@cf/mistral/mistral-7b-instruct-v0.1",
 ];
 
-// Title patterns to immediately reject (opinion pieces, stock commentary, mining press releases, exploration projects, corporate deals, oil news, ETF advice)
+// Title patterns to immediately reject (opinion pieces, stock commentary, corporate earnings, mining press releases, exploration projects, corporate deals, oil news, ETF advice)
 const REJECT_PATTERNS = [
   /is (now|it) a (good|bad) time/i,
   /here's (what|why|how)/i,
@@ -18,20 +18,23 @@ const REJECT_PATTERNS = [
   /investment strategy|etf guide|stock market/i,
   /s&p|nasdaq|dow jones|big tech|wall street|tech stocks|stock rotation|melt-up/i,
   /market experts|analysts (say|think|believe|suggest|discuss)/i,
-  /miner|gold miner|exploration|mining|greenfield|prospectivity|gold corp|silver corp|metals corp|mining corp|mine |drilling|drill |g\/t|deposit|epithermal|prospect|intersects|assays?|samples?|claims|property|resources corp/i,
-  /oil|crude oil|wti|petroleum|opec/i,
-  /inc\.|ltd\.|corp\.|quarterly results|earnings release|advances|completes|reports surface|expands land|confirms|sale to|acquisition|merger|falls apart/i,
+  /gold miner|silver miner|exploration|mining|greenfield|prospectivity|gold corp|silver corp|metals corp|mining corp|mine |drilling|drill |g\/t|deposit|epithermal|prospect|intersects|assays?|samples?|claims|property|resources corp|fast-41|permitting|project/i,
+  /oil price|crude oil price|wti crude|opec meeting|eia oil inventory|petroleum stocks/i,
+  /\b(inc|ltd|corp|toyota|tesla|apple|nvidia|amazon|microsoft|google|meta)\b|quarterly results|earnings release|advances|completes|reports surface|expands land|confirms|sale to|acquisition|merger|falls apart|hefty profit|car sales|vehicle sales|automaker/i,
+  /company announcement|corporate announcement|sec filing|ipo|spin-off|acceptance of the new|covered projects/i,
   /\?/i, // Discard speculative headlines containing question marks
 ];
 
 /**
- * Parse estimated dollar impact for Gold (e.g. "~$10-$20/oz" -> 20, "$30/oz" -> 30)
+ * Parse estimated average dollar impact for Gold (e.g. "~$10-$25/oz" -> 17.5, "$30/oz" -> 30)
  */
 function getGoldImpactAmount(estimatedImpact?: string): number {
   if (!estimatedImpact) return 0;
   const matches = estimatedImpact.match(/\d+(\.\d+)?/g);
   if (!matches || matches.length === 0) return 0;
-  return Math.max(...matches.map(Number));
+  const nums = matches.map(Number);
+  const sum = nums.reduce((acc, curr) => acc + curr, 0);
+  return sum / nums.length;
 }
 
 export async function analyzeNewsWithAI(env: Env, article: NewsArticle): Promise<ImpactAnalysis | null> {
@@ -43,7 +46,7 @@ export async function analyzeNewsWithAI(env: Env, article: NewsArticle): Promise
   // Pre-filter: Discard stock commentary, mining corporate news, oil news, and opinion pieces immediately
   for (const pattern of REJECT_PATTERNS) {
     if (pattern.test(article.title)) {
-      console.log(`[REJECT MINING/CORPORATE/OIL] Skipping: "${article.title}"`);
+      console.log(`[REJECT MINING/CORPORATE/EARNINGS] Skipping: "${article.title}"`);
       return {
         isRelevant: false,
         impactLevel: "NONE",
@@ -55,29 +58,30 @@ export async function analyzeNewsWithAI(env: Env, article: NewsArticle): Promise
   }
 
   const prompt = `You are an institutional Forex & Gold Macro Fundamental Analyst.
-Analyze the following news headline for real-world breaking market impact:
+Analyze the following news headline for REAL-WORLD IMMEDIATE 7-DAY MARKET IMPACT:
 
 HEADLINE: "${article.title}"
 SOURCE: ${article.source}
 CONTENT: "${article.content.slice(0, 350)}"
 
 CRITICAL REJECTION RULES (isRelevant = false):
-1. REJECT (isRelevant=false, impactLevel="NONE") if this is about a specific mining company, gold exploration project, drilling results, junior miners, corporate sales/mergers, or corporate press releases.
-2. REJECT (isRelevant=false, impactLevel="NONE") if this news DOES NOT have massive market strength to move spot Gold (XAUUSD) by AT LEAST $25/oz or USD/Forex by at least 60+ pips. Reject routine $5-$15/oz gold commentary, daily price noise, analyst opinions, or minor updates.
-3. REJECT (isRelevant=false, impactLevel="NONE") if this is stock market commentary, S&P 500, Nasdaq, Big Tech, oil news, earnings, or equity rotation.
-4. REJECT (isRelevant=false, impactLevel="NONE") if you CANNOT determine a direct, clear BULLISH or BEARISH directional impact on USD, EUR, GBP, or GOLD (XAUUSD).
+1. REJECT (isRelevant=false, impactLevel="NONE") if this is about corporate earnings, company profits (e.g. Toyota, Big Tech), automaker sales, corporate press releases, specific mining companies, gold exploration projects (e.g. FAST-41, Amalga), drilling results, or corporate deals.
+2. REJECT (isRelevant=false, impactLevel="NONE") if the market impact is long-term (2-3 months away, multi-year permitting, or slow structural trends). ACCEPT ONLY NEWS THAT WILL IMMEDIATELY MOVE THE MARKET WITHIN THE NEXT 7 DAYS (preferably 24-48 hours).
+3. REJECT (isRelevant=false, impactLevel="NONE") if this news DOES NOT have massive market strength to move spot Gold (XAUUSD) by AT LEAST $25/oz or USD/Forex by at least 60+ pips. Reject routine $5-$15/oz gold commentary, daily price noise, analyst opinions, or minor updates.
+4. REJECT (isRelevant=false, impactLevel="NONE") if this is stock market commentary, S&P 500, Nasdaq, Big Tech, oil news, earnings, or equity rotation.
+5. REJECT (isRelevant=false, impactLevel="NONE") if you CANNOT determine a direct, clear BULLISH or BEARISH directional impact on USD, EUR, GBP, or GOLD (XAUUSD).
 
 CRITICAL ACCEPTANCE RULES (isRelevant = true, impactLevel = "HIGH"):
-ACCEPT ONLY EXTREME HIGH-STRENGTH BREAKING MACRO / GEOPOLITICAL SHOCKS (Capable of moving spot Gold by at least $25/oz or USD substantially by 60+ pips):
-- Major Geopolitical Shocks: Wars, military strikes, Strait of Hormuz closure, major international sanctions, emergency trade tariffs.
+ACCEPT ONLY EXTREME HIGH-STRENGTH URGENT BREAKING MACRO SHOCKS WITH IMMEDIATE 7-DAY IMPACT:
+- Major Geopolitical Shocks: Wars, military strikes, Strait of Hormuz closure, emergency international trade sanctions/tariffs.
 - Major Breaking Central Bank policy shifts or emergency Federal Reserve rate announcements.
-- Direct global macro shocks impacting USD, EUR, GBP, or Gold by $25+/oz.
+- Direct global macro shocks causing immediate >= $25/oz movement on Gold or 60+ pips on USD/EUR/GBP within the next 7 days.
 
 Output STRICT RAW JSON:
 
 {
-  "isRelevant": true, // false if opinion/corporate/unclear impact or impact < $25/oz for Gold
-  "impactLevel": "HIGH", // "HIGH" for breaking news with >= $25/oz impact on Gold, otherwise "NONE"
+  "isRelevant": true, // false if opinion/corporate/unclear impact, impact < $25/oz for Gold, or timeframe > 7 days
+  "impactLevel": "HIGH", // "HIGH" ONLY for urgent breaking macro shocks with >= $25/oz 7-day impact on Gold, otherwise "NONE"
   "headlineSummary": "Concise 2-line summary explaining the breaking news event.",
   "keyTakeaways": [
     "Main market takeaway (1-2 sentences)."
@@ -86,7 +90,7 @@ Output STRICT RAW JSON:
     {
       "asset": "GOLD", // Single currency/asset only: "USD", "EUR", "GBP", or "GOLD"
       "sentiment": "BULLISH", // MUST be "BULLISH" or "BEARISH"
-      "estimatedImpact": "~$25-$50/oz", // For GOLD use $/oz (MUST BE AT LEAST $25/oz), for Currencies use pips (e.g. "~60-100 pips")
+      "estimatedImpact": "~$30-$50/oz", // ACTUAL estimated 7-day impact. Calculate carefully based on news strength.
       "reasoning": "Short reason (max 10 words)."
     }
   ]

@@ -70,6 +70,18 @@ export async function fetchLatestNews(): Promise<NewsArticle[]> {
 
         if (!title || !link) continue;
 
+        // Immediately drop corporate earnings, automaker profits, stock reports, and long-term project press releases
+        const CORPORATE_DISCARD_PATTERNS = [
+          /profit|earnings|quarterly results|earnings release|car sales|vehicle sales|automaker|toyota|tesla|apple|nvidia|amazon|microsoft|google|meta/i,
+          /fast-41|permitting|project|exploration|drilling|deposit|assay|samples|claims|property|resources corp|gold corp|silver corp|metals corp/i,
+          /acceptance of the new|covered projects|sec filing|ipo|spin-off/i,
+        ];
+
+        if (CORPORATE_DISCARD_PATTERNS.some((p) => p.test(title))) {
+          console.log(`[DISCARD RSS CORPORATE/PROJECT] Skipping non-macro headline: "${title}"`);
+          continue;
+        }
+
         // Freshness check: Discard articles older than 45 minutes (2700 seconds)
         if (pubDateStr) {
           const articleTime = new Date(pubDateStr).getTime();
